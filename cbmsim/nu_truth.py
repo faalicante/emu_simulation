@@ -143,6 +143,9 @@ for vcut in vis_cuts.values():
     ut.bookHist(h, f'{particle}_TXTY{vcut}', particle+';TX;TY', 300, -1.5, 1.5, 300, -1.5, 1.5)
     ut.bookHist(h, f'{particle}_PT{vcut}', particle+';PT', 300, 0, 3000)
 
+ntuple = ROOT.TNtuple("cbmsim", "Ntuple of nu",'evID:FLUKA_weight:nu_E:nu_tx:nu_ty:nu_vx:nu_vy:nu_vz:nu_wall:nu_brick:lep_E:lep_tx:lep_ty:n_prong:neu_vtx')
+
+
 ###### EVENT LOOP ##############
 for i_event, event in enumerate(sTree):
   if len(sys.argv) == 2:
@@ -277,21 +280,26 @@ for i_event, event in enumerate(sTree):
     if ecut and (lep_theta>1 or lep_energy < ecut/1e3): continue
     h[f'{nu}_n_prong{vcut}'].Fill(n_prong[ecut])
     h[f'{nu}_neu_vtx{vcut}'].Fill(n_neu_vtx[ecut])
-
+  ntuple.Fill(i_event, from_charm, nutrack.GetEnergy(), nu_angle.X(), nu_angle.Y(), nu_vtx.X(), nu_vtx.Y(), nu_vtx.Z(), nu_wall_int, nu_brick_int, lep_energy, lep_angle.X(), lep_angle.Y(), n_prong[0], n_neu_vtx[0])
 ###########################################
 print('Arrived at event', i_event-1)
 tag = ''
 if len(sys.argv) == 2: tag = 'to_evt_'+str(up_to_ev)
 elif  len(sys.argv) == 3: tag = 'from_ev_'+str(from_ev)+'_to_ev_'+str(to_ev)
-
 for nu in ['numu', 'nue']:
-  outName = outPath+'/histo_'+nu+'.'+tag+'.root'
-  outFile = ROOT.TFile(outName, 'RECREATE')
+  outFileName = outPath+'/histo_'+nu+'.'+tag+'.root'
+  outFile = ROOT.TFile(outFileName, 'RECREATE')
   for _h in h.values():
     if nu in _h.GetName():
       _h.Write()
   outFile.Write()
   outFile.Close()
+outNtupleName = outPath+'/ntuple_.'+tag+'.root'
+outNtuple = ROOT.TFile(outNtupleName, 'RECREATE')
+ntuple.Write()
+outNtuple.Write()
+outNtuple.Close() 
 print('Done')
 print('Elapsed time: '+str((time.time()-start_time)/60.)+' mins')
-print("Generated file "+outName)
+print("Generated file ", outFileName)
+print("Generated ntuple ", outNtupleName)
