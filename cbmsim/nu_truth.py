@@ -114,30 +114,34 @@ MyPDG = ROOT.TDatabasePDG.Instance()
 failedPDGs = list()
 
 h               = {}
-for nu in ['numu', 'nue', 'numu_c', 'nue_c', 'neu']:
-  ut.bookHist(h, f'{nu}_energy', f';E_{nu}', 240, 0, 4800)
-  ut.bookHist(h, f'{nu}_TX', ';TX', 300, -1.5, 1.5)
-  ut.bookHist(h, f'{nu}_TY', ';TY', 300, -1.5, 1.5)
-  ut.bookHist(h, f'{nu}_TXTY', ';TX;TY', 300, -1.5, 1.5, 300, -1.5, 1.5)
-  ut.bookHist(h, f'{nu}_vx', f";{nu} vtx X[cm]", int(wallRanges['X'][4][1]-wallRanges['X'][0][0]+40)*10, wallRanges['X'][0][0]-20, wallRanges['X'][4][1]+20)
-  ut.bookHist(h, f'{nu}_vy', f";{nu} vtx Y[cm]", int(wallRanges['Y'][4][1]-wallRanges['Y'][0][0]+40)*10, wallRanges['Y'][0][0]-20, wallRanges['Y'][4][1]+20)
-  ut.bookHist(h, f'{nu}_vz', f";{nu} vtx Z[cm]", int(wallRanges['Z'][4][1]-wallRanges['Z'][0][0]+40)*10, wallRanges['Z'][0][0]-20, wallRanges['Z'][4][1]+20)
-  ut.bookHist(h, f'{nu}_vxy', f";{nu} vtx X[cm];{nu} vtx Y[cm]", int(wallRanges['X'][4][1]-wallRanges['X'][0][0]+40)*10, wallRanges['X'][0][0]-20, wallRanges['X'][4][1]+20, int(wallRanges['Y'][4][1]-wallRanges['Y'][0][0]+40)*10, wallRanges['Y'][0][0]-20, wallRanges['Y'][4][1]+20)
-  ut.bookHist(h, f'{nu}_vxz', f";{nu} vtx Z[cm];{nu} vtx X[cm]", int(wallRanges['Z'][4][1]-wallRanges['Z'][0][0]+40)*10, wallRanges['Z'][0][0]-20, wallRanges['Z'][4][1]+20, int(wallRanges['X'][4][1]-wallRanges['X'][0][0]+40)*10, wallRanges['X'][0][0]-20, wallRanges['X'][4][1]+20)
-  ut.bookHist(h, f'{nu}_vyz', f";{nu} vtx Z[cm];{nu} vtx Y[cm]", int(wallRanges['Z'][4][1]-wallRanges['Z'][0][0]+40)*10, wallRanges['Z'][0][0]-20, wallRanges['Z'][4][1]+20, int(wallRanges['Y'][4][1]-wallRanges['Y'][0][0]+40)*10, wallRanges['Y'][0][0]-20, wallRanges['Y'][4][1]+20)
-  ut.bookHist(h, f'{nu}_vtx_wall', f"{nu} vertex vs wall; Wall", 5, 1, 6)
-  ut.bookHist(h, f'{nu}_vtx_brick', f"{nu} vertex vs brick; Brick", 60, 0, 60)
-  ut.bookHist(h, f'{nu}_n_prong', "N. of charged tracks per vtx; Multiplicity", 50, 0, 50)
-  if nu != 'neu':
-    ut.bookHist(h, f'{nu}_neu_vtx', "N. of neutral secondary vertices; N", 50, 0, 50)
-    ut.bookHist(h, f'{nu}_Out_In_difftheta_TXTY', 'Difference between outgoing lepton and incoming nu TXTY;TX;TY', 1000, -0.1, 0.1, 1000, -0.1, 0.1)
-    ut.bookHist(h, f'{nu}_Out_In_Energy', f'Difference between outgoing lepton and incoming nu Energy;E_{nu}', 240, 0, 4800)
-for particle in ['mu', 'e', 'hadron', 'hadron_sec']:
-  ut.bookHist(h, particle+'_energy', particle+' Energy;Energy [GeV]', 240, 0, 4800)
-  ut.bookHist(h, particle+'_TX', particle+';TX', 300, -1.5, 1.5)
-  ut.bookHist(h, particle+'_TY', particle+';TY', 300, -1.5, 1.5)
-  ut.bookHist(h, particle+'_TXTY', particle+';TX;TY', 300, -1.5, 1.5, 300, -1.5, 1.5)
-  ut.bookHist(h, particle+'_PT', particle+';PT', 300, 0, 3000)
+e_cuts          = {200:'_e200', 500:'_e500', 1000:'_e1000'}
+angle_cuts      = {0:'', 1:'_angle1'}
+vis_cuts        = {**angle_cuts, **e_cuts}
+for vcut in vis_cuts.values():
+  for nu in ['numu', 'nue', 'numu_c', 'nue_c', 'neu']:
+    ut.bookHist(h, f'{nu}_energy{vcut}', f';E_{nu}', 240, 0, 4800)
+    ut.bookHist(h, f'{nu}_TX{vcut}', ';TX', 300, -1.5, 1.5)
+    ut.bookHist(h, f'{nu}_TY{vcut}', ';TY', 300, -1.5, 1.5)
+    ut.bookHist(h, f'{nu}_TXTY{vcut}', ';TX;TY', 300, -1.5, 1.5, 300, -1.5, 1.5)
+    ut.bookHist(h, f'{nu}_vx{vcut}', f";{nu} vtx X[cm]", int(wallRanges['X'][4][1]-wallRanges['X'][0][0]+40)*10, wallRanges['X'][0][0]-20, wallRanges['X'][4][1]+20)
+    ut.bookHist(h, f'{nu}_vy{vcut}', f";{nu} vtx Y[cm]", int(wallRanges['Y'][4][1]-wallRanges['Y'][0][0]+40)*10, wallRanges['Y'][0][0]-20, wallRanges['Y'][4][1]+20)
+    ut.bookHist(h, f'{nu}_vz{vcut}', f";{nu} vtx Z[cm]", int(wallRanges['Z'][4][1]-wallRanges['Z'][0][0]+40)*10, wallRanges['Z'][0][0]-20, wallRanges['Z'][4][1]+20)
+    ut.bookHist(h, f'{nu}_vxy{vcut}', f";{nu} vtx X[cm];{nu} vtx Y[cm]", int(wallRanges['X'][4][1]-wallRanges['X'][0][0]+40)*10, wallRanges['X'][0][0]-20, wallRanges['X'][4][1]+20, int(wallRanges['Y'][4][1]-wallRanges['Y'][0][0]+40)*10, wallRanges['Y'][0][0]-20, wallRanges['Y'][4][1]+20)
+    ut.bookHist(h, f'{nu}_vxz{vcut}', f";{nu} vtx Z[cm];{nu} vtx X[cm]", int(wallRanges['Z'][4][1]-wallRanges['Z'][0][0]+40)*10, wallRanges['Z'][0][0]-20, wallRanges['Z'][4][1]+20, int(wallRanges['X'][4][1]-wallRanges['X'][0][0]+40)*10, wallRanges['X'][0][0]-20, wallRanges['X'][4][1]+20)
+    ut.bookHist(h, f'{nu}_vyz{vcut}', f";{nu} vtx Z[cm];{nu} vtx Y[cm]", int(wallRanges['Z'][4][1]-wallRanges['Z'][0][0]+40)*10, wallRanges['Z'][0][0]-20, wallRanges['Z'][4][1]+20, int(wallRanges['Y'][4][1]-wallRanges['Y'][0][0]+40)*10, wallRanges['Y'][0][0]-20, wallRanges['Y'][4][1]+20)
+    ut.bookHist(h, f'{nu}_vtx_wall{vcut}', f"{nu} vertex vs wall; Wall", 5, 1, 6)
+    ut.bookHist(h, f'{nu}_vtx_brick{vcut}', f"{nu} vertex vs brick; Brick", 60, 0, 60)
+    ut.bookHist(h, f'{nu}_n_prong{vcut}', "N. of charged tracks per vtx; Multiplicity", 50, 0, 50)
+    if nu != 'neu':
+      ut.bookHist(h, f'{nu}_neu_vtx{vcut}', "N. of neutral secondary vertices; N", 50, 0, 50)
+      ut.bookHist(h, f'{nu}_difftheta_TXTY{vcut}', 'Difference between outgoing lepton and incoming nu TXTY;TX;TY', 1000, -0.1, 0.1, 1000, -0.1, 0.1)
+      ut.bookHist(h, f'{nu}_lep_Energy{vcut}', f'Energy correlation between outgoing lepton and incoming nu ;E_{nu};E_lep', 240, 0, 4800, 240, 0, 4800)
+  for particle in ['mu', 'e', 'hadron', 'hadron_sec']:
+    ut.bookHist(h, f'{particle}_energy{vcut}', particle+' Energy;Energy [GeV]', 240, 0, 4800)
+    ut.bookHist(h, f'{particle}_TX{vcut}', particle+';TX', 300, -1.5, 1.5)
+    ut.bookHist(h, f'{particle}_TY{vcut}', particle+';TY', 300, -1.5, 1.5)
+    ut.bookHist(h, f'{particle}_TXTY{vcut}', particle+';TX;TY', 300, -1.5, 1.5, 300, -1.5, 1.5)
+    ut.bookHist(h, f'{particle}_PT{vcut}', particle+';PT', 300, 0, 3000)
 
 ###### EVENT LOOP ##############
 for i_event, event in enumerate(sTree):
@@ -146,8 +150,7 @@ for i_event, event in enumerate(sTree):
   elif len(sys.argv) == 3:
     if i_event < from_ev: continue
     if i_event >= to_ev: break
-  # if i_event%1000 == 0: print("Sanity check, current event ", i_event)
-  print("Sanity check, current event ", i_event)
+  if i_event%100 == 0: print("Sanity check, current event ", i_event)
   
   is_numu = False
   is_nue = False
@@ -178,28 +181,31 @@ for i_event, event in enumerate(sTree):
   lep_angle = ROOT.TVector3(leptrack.GetPx()/(leptrack.GetPz()), leptrack.GetPy()/(leptrack.GetPz()), 1.)
   lep_pt = leptrack.GetPt()
   diff_theta = lep_angle-nu_angle
-  h[f'{nu}_energy'].Fill(nutrack.GetEnergy())
-  h[f'{nu}_TX'].Fill(nu_angle.X())
-  h[f'{nu}_TY'].Fill(nu_angle.Y())
-  h[f'{nu}_TXTY'].Fill(nu_angle.X(), nu_angle.Y())
-  h[f'{nu}_vx'].Fill(nutrack.GetStartX())
-  h[f'{nu}_vy'].Fill(nutrack.GetStartY())
-  h[f'{nu}_vz'].Fill(nutrack.GetStartZ())
-  h[f'{nu}_vxy'].Fill(nutrack.GetStartX(), nutrack.GetStartY())
-  h[f'{nu}_vxz'].Fill(nutrack.GetStartZ(), nutrack.GetStartX())
-  h[f'{nu}_vyz'].Fill(nutrack.GetStartZ(), nutrack.GetStartY())
-  h[f'{nu}_Out_In_difftheta_TXTY'].Fill(diff_theta.X(), diff_theta.Y())
-  h[f'{nu}_Out_In_Energy'].Fill(leptrack.GetEnergy() - nutrack.GetEnergy())
-  h[f'{nu}_vtx_wall'].Fill(nu_wall_int)
-  h[f'{nu}_vtx_brick'].Fill(nu_brick_int)
+  lep_energy = leptrack.GetEnergy()
+  lep_theta = ROOT.TMath.Sqrt(lep_angle.X()**2 + lep_angle.Y()**2)
+  for ecut, vcut in vis_cuts.items():
+    if ecut and (lep_theta>1 or lep_energy < ecut/1e3): continue
+    h[f'{nu}_energy{vcut}'].Fill(nutrack.GetEnergy())
+    h[f'{nu}_TX{vcut}'].Fill(nu_angle.X())
+    h[f'{nu}_TY{vcut}'].Fill(nu_angle.Y())
+    h[f'{nu}_TXTY{vcut}'].Fill(nu_angle.X(), nu_angle.Y())
+    h[f'{nu}_vx{vcut}'].Fill(nutrack.GetStartX())
+    h[f'{nu}_vy{vcut}'].Fill(nutrack.GetStartY())
+    h[f'{nu}_vz{vcut}'].Fill(nutrack.GetStartZ())
+    h[f'{nu}_vxy{vcut}'].Fill(nutrack.GetStartX(), nutrack.GetStartY())
+    h[f'{nu}_vxz{vcut}'].Fill(nutrack.GetStartZ(), nutrack.GetStartX())
+    h[f'{nu}_vyz{vcut}'].Fill(nutrack.GetStartZ(), nutrack.GetStartY())
+    h[f'{nu}_difftheta_TXTY{vcut}'].Fill(diff_theta.X(), diff_theta.Y())
+    h[f'{nu}_lep_Energy{vcut}'].Fill(nutrack.GetEnergy(), leptrack.GetEnergy())
+    h[f'{nu}_vtx_wall{vcut}'].Fill(nu_wall_int)
+    h[f'{nu}_vtx_brick{vcut}'].Fill(nu_brick_int)
+    h[f'{particle}_energy{vcut}'].Fill(lep_energy)
+    h[f'{particle}_TX{vcut}'].Fill(lep_angle.X())
+    h[f'{particle}_TY{vcut}'].Fill(lep_angle.Y())
+    h[f'{particle}_TXTY{vcut}'].Fill(lep_angle.X(), lep_angle.Y())
   
-  h[f'{particle}_energy'].Fill(leptrack.GetEnergy())
-  h[f'{particle}_TX'].Fill(lep_angle.X())
-  h[f'{particle}_TY'].Fill(lep_angle.Y())
-  h[f'{particle}_TXTY'].Fill(lep_angle.X(), lep_angle.Y())
-  
-  n_prong = 0
-  n_neu_vtx = 0
+  n_prong = {0: 0, 1: 0, 200:0, 500: 0, 1000: 0}
+  n_neu_vtx = {0: 0, 1: 0, 200:0, 500: 0, 1000: 0}
   for i_track, track in enumerate(event.MCTrack):
     MotherID = track.GetMotherId()
     Energy = track.GetEnergy()
@@ -211,66 +217,81 @@ for i_event, event in enumerate(sTree):
     tx = track.GetPx()/track.GetPz()
     ty = track.GetPy()/track.GetPz()
     pt = track.GetPt()
+    theta = ROOT.TMath.Sqrt(tx**2 + ty**2)
     if MotherID == 0 and charge != 0:
-      h['hadron_energy'].Fill(Energy)
-      h['hadron_TX'].Fill(tx)
-      h['hadron_TY'].Fill(ty)
-      h['hadron_TXTY'].Fill(tx, ty)
-      h['hadron_PT'].Fill(pt)
-      n_prong +=1
+      for ecut, vcut in vis_cuts.items():
+        if ecut and (lep_theta>1 or lep_energy < ecut/1e3): continue
+        h[f'hadron_energy{vcut}'].Fill(Energy)
+        h[f'hadron_TX{vcut}'].Fill(tx)
+        h[f'hadron_TY{vcut}'].Fill(ty)
+        h[f'hadron_TXTY{vcut}'].Fill(tx, ty)
+        h[f'hadron_PT{vcut}'].Fill(pt)
+        n_prong[ecut] += 1
     if charge == 0:
-      n_prong_sec = 0
+      n_neu_vtx[ecut] += 1 
+      n_prong_sec =  {0: 0, 1: 0, 200:0, 500: 0, 1000: 0}
       for j_track, track2 in enumerate(event.MCTrack):
         MotherID2 = track2.GetMotherId()
-        if MotherID2 != i_track: continue         #get daughter from neutral
+        if MotherID2 != i_track: continue   #get daughter from neutral
         neu_vtx = ROOT.TVector3(track2.GetStartX(), track2.GetStartY(), track2.GetStartZ())
         neu_in_brick, neu_brick_int = getBrickInt(neu_vtx, brickRanges)
         neu_wall_int, neu_brick_int = decodeBrick(neu_brick_int)
-        if not neu_in_brick: break  # excluding neutrals not interacting in the target
-        Energy2 = track2.GetEnergy()
+        if not neu_in_brick: # excluding neutrals not interacting in the target
+          n_neu_vtx[ecut] -= 1 
+          break 
         PdgCode2 = track2.GetPdgCode()
         if not MyPDG.GetParticle(PdgCode2):
             if PdgCode2 not in failedPDGs: failedPDGs.append(PdgCode2)
             continue
         charge2 = MyPDG.GetParticle(PdgCode2).Charge()
+        if charge2 == 0: continue
+        Energy2 = track2.GetEnergy()
         tx2 = track2.GetPx()/track2.GetPz()
         ty2 = track2.GetPy()/track2.GetPz()
         pt2 = track2.GetPt()
-        n_neu_vtx += 1 
-        if charge2 != 0:
-          n_prong_sec +=1
-          h['hadron_sec_energy'].Fill(Energy2)
-          h['hadron_sec_TX'].Fill(tx2)
-          h['hadron_sec_TY'].Fill(ty2)
-          h['hadron_sec_TXTY'].Fill(tx2, ty2)
-          h['hadron_sec_PT'].Fill(pt2)
-      h['neu_energy'].Fill(Energy)
-      h['neu_TX'].Fill(tx)
-      h['neu_TY'].Fill(ty)
-      h['neu_TXTY'].Fill(tx, ty)
-      h['neu_vx'].Fill(neu_vtx.X())
-      h['neu_vy'].Fill(neu_vtx.Y())
-      h['neu_vz'].Fill(neu_vtx.Z())
-      h['neu_vxz'].Fill(neu_vtx.Z(), neu_vtx.X())
-      h['neu_vyz'].Fill(neu_vtx.Z(), neu_vtx.Y())
-      h['neu_vxy'].Fill(neu_vtx.X(), neu_vtx.Y())
-      h['neu_vtx_wall'].Fill(neu_wall_int)
-      h['neu_vtx_brick'].Fill(neu_brick_int)
-      h['neu_n_prong'].Fill(n_prong_sec)
-  h[f'{nu}_n_prong'].Fill(n_prong)
-  h[f'{nu}_neu_vtx'].Fill(n_neu_vtx)
+        theta2 = ROOT.TMath.Sqrt(tx2**2 + ty2**2)
+        for ecut, vcut in vis_cuts.items():
+          if ecut and (lep_theta>1 or lep_energy < ecut/1e3): continue
+          h[f'hadron_sec_energy{vcut}'].Fill(Energy2)
+          h[f'hadron_sec_TX{vcut}'].Fill(tx2)
+          h[f'hadron_sec_TY{vcut}'].Fill(ty2)
+          h[f'hadron_sec_TXTY{vcut}'].Fill(tx2, ty2)
+          h[f'hadron_sec_PT{vcut}'].Fill(pt2)
+          n_prong_sec[ecut] +=1
+      for ecut, vcut in vis_cuts.items():
+        if ecut and (lep_theta>1 or lep_energy < ecut/1e3): continue
+        h[f'neu_energy{vcut}'].Fill(Energy)
+        h[f'neu_TX{vcut}'].Fill(tx)
+        h[f'neu_TY{vcut}'].Fill(ty)
+        h[f'neu_TXTY{vcut}'].Fill(tx, ty)
+        h[f'neu_vx{vcut}'].Fill(neu_vtx.X())
+        h[f'neu_vy{vcut}'].Fill(neu_vtx.Y())
+        h[f'neu_vz{vcut}'].Fill(neu_vtx.Z())
+        h[f'neu_vxz{vcut}'].Fill(neu_vtx.Z(), neu_vtx.X())
+        h[f'neu_vyz{vcut}'].Fill(neu_vtx.Z(), neu_vtx.Y())
+        h[f'neu_vxy{vcut}'].Fill(neu_vtx.X(), neu_vtx.Y())
+        h[f'neu_vtx_wall{vcut}'].Fill(neu_wall_int)
+        h[f'neu_vtx_brick{vcut}'].Fill(neu_brick_int)
+        h[f'neu_n_prong{vcut}'].Fill(n_prong_sec[ecut])
+  for ecut, vcut in vis_cuts.items():
+    if ecut and (lep_theta>1 or lep_energy < ecut/1e3): continue
+    h[f'{nu}_n_prong{vcut}'].Fill(n_prong[ecut])
+    h[f'{nu}_neu_vtx{vcut}'].Fill(n_neu_vtx[ecut])
 
 ###########################################
 print('Arrived at event', i_event-1)
 tag = ''
 if len(sys.argv) == 2: tag = 'to_evt_'+str(up_to_ev)
 elif  len(sys.argv) == 3: tag = 'from_ev_'+str(from_ev)+'_to_ev_'+str(to_ev)
-outName = outPath+'/histo_numc.'+tag+'.root'
-outFile = ROOT.TFile(outName, 'RECREATE')
-for _h in h.values():
-  _h.Write()
-outFile.Write()
-outFile.Close()
+
+for nu in ['numu', 'nue']:
+  outName = outPath+'/histo_'+nu+'.'+tag+'.root'
+  outFile = ROOT.TFile(outName, 'RECREATE')
+  for _h in h.values():
+    if nu in _h.GetName():
+      _h.Write()
+  outFile.Write()
+  outFile.Close()
 print('Done')
 print('Elapsed time: '+str((time.time()-start_time)/60.)+' mins')
 print("Generated file "+outName)
