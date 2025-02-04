@@ -1,150 +1,143 @@
+import os.path
+from time import time
+from array import array
 import ROOT as r
 import numpy as np
 import fedrarootlogon
-pos = [[],[],[],[]]
-#pos =         [xmin,   xmax,   ymin,   ymax,    zmin , zmax]
-pos[0].append([0,      53000,  0,      53000,  -37223.46, 0])
-pos[0].append([53000,  96000,  0,      53000,  -37223.46, 0])
-pos[0].append([0,      53000,  53000,  96000,  -37223.46, 0])
-pos[0].append([53000,  96000,  53000,  96000,  -37223.46, 0])
-pos[1].append([96000,  138000, 0,      53000,  -37223.46, 0])
-pos[1].append([138000, 200000, 0,      53000,  -37223.46, 0])
-pos[1].append([96000,  138000, 53000,  96000,  -37223.46, 0])
-pos[1].append([138000, 200000, 53000,  96000,  -37223.46, 0])
-pos[2].append([0,      53000,  96000,  138000, -37223.46, 0])
-pos[2].append([53000,  96000,  96000,  138000, -37223.46, 0])
-pos[2].append([0,      53000,  138000, 200000, -37223.46, 0])
-pos[2].append([53000,  96000,  138000, 200000, -37223.46, 0])
-pos[3].append([96000,  138000, 96000,  138000, -37223.46, 0])
-pos[3].append([138000, 200000, 96000,  138000, -37223.46, 0])
-pos[3].append([96000,  138000, 138000, 200000, -37223.46, 0])
-pos[3].append([138000, 200000, 138000, 200000, -37223.46, 0])
-pos_sim = [-39450, 0]
-pos_sim_x = [289, 299]
-pos_sim_y = [85, 95]
 
-path = 	'/home/scanner/sndlhc/RUN0/b000131/vertexfiles/upstream31'
-paths = [path+'/first', path+'/second', path+'/third', path+'/fourth']
-vertexFiles = [[],[],[],[]]
+def AddToDict(dictionary, var):
+    if var in dictionary:
+        dictionary[var] += 1
+    else:
+        dictionary[var] = 1
 
-r.gROOT.SetBatch(False)
-r.gStyle.SetOptStat(0)
+from argparse import ArgumentParser
+parser = ArgumentParser()
+parser.add_argument("-b", dest="brickID", required=True, default=None, type=int)
+parser.add_argument("--numu", dest="numu", required=False, default=None)
+parser.add_argument("--nue", dest="nue", required=False, default=None)
+parser.add_argument("--muon", dest="muon", required=False, default=None)
+options = parser.parse_args()
 
-#flag0 stats
-cf0 = r.TCanvas('cf0', 'flag 0 stats', 1200, 1000)
-cf0.Divide(2, 2)
-h_n0 = r.TH1D('ntracks', 'RUN0 data;multiplicity', 48, 2.5, 50.5)
-h_nseg = r.TH1D('nseg', 'RUN0 data;nseg', 32, 0, 32)
-h_npl = r.TH1D('npl', 'RUN0 data;npl', 32, 0, 32)
-h_ff = r.TH1D('ff', 'RUN0 data;FF', 22, -0.05, 1.05)
-h_n0_sim = r.TH1D('ntracks_mc', 'Monte Carlo BKG;multiplicity', 48, 2.5, 50.5)
-h_nseg_sim = r.TH1D('nseg_mc', 'Monte Carlo BKG;nseg', 32, 0, 32)
-h_npl_sim = r.TH1D('npl_mc', 'Monte Carlo BKG;npl', 32, 0, 32)
-h_ff_sim = r.TH1D('ff_mc', 'Monte Carlo BKG;FF', 22, -0.05, 1.05)
+numu = options.numu
+nue = options.nue
+muon = options.muon
+brickID = options.brickID
+from_plate = 60
 
-#flag0 avg stats
-cf0avg = r.TCanvas('cf0avg', 'cf0avg', 1200, 1000)
-cf0avg.Divide(2, 2)
-h_nseg_avg = r.TH1D('nseg_avg', 'RUN0 data;nseg', 31, 0, 31)
-h_npl_avg = r.TH1D('npl_avg', 'RUN0 data;npl', 31, 0, 31)
-h_ff_avg = r.TH1D('ff_avg', 'RUN0 data;FF', 100, -0.01, 1.01)
-h_nseg_avg_sim = r.TH1D('nseg_avg_mc', 'Monte Carlo;nseg', 31, 0, 31)
-h_npl_avg_sim = r.TH1D('npl_avg_mc', 'Monte Carlo;npl', 31, 0, 31)
-h_ff_avg_sim = r.TH1D('ff_avg_mc', 'Monte Carlo BKG;FF', 100, -0.01, 1.01)
+zmin = -77585.00
 
-#impact parameter
-c_imp = r.TCanvas('c_imp', 'impact parameter', 1400, 600)
-c_imp.Divide(2, 1)
-h_imp = r.TH1D('ip', 'RUN0 data;ip[um]', 50, -0.5, 150)
-h_imp_sim = r.TH1D('ip_mc', 'Monte Carlo BG;ip[um]', 50, 0, 150)
-h_imp_avg = r.TH1D('ip_avg', 'RUN0 data;ip[um]', 50, 0, 150)
-h_imp_avg_sim = r.TH1D('ip_avg_mc', 'Monte Carlo BKG;ip[um]', 30, 0, 150)
+if numu:
+    path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc_eff9_smear1'
+    sim_file = path+'/inECC_sndLHC.Genie-TGeant4.root'
+    out_name = f'/vertex_sigmu_{brickID}.root'
+elif nue:
+    path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/nuecc_eff9_smear1'
+    sim_file = path+'/inECC_sndLHC.Genie-TGeant4.root'
+    out_name = f'/vertex_sige_{brickID}.root'
+elif muon:
+    path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/muon1E5_eff9_smear1'
+    sim_file = path+'/sndLHC.Ntuple-TGeant4-1E5cm2.root'
+    out_name = f'/vertex_muon_{brickID}.root'
+out_dir = path
+vtx_file = path+'/b{:06d}/b{:06d}.0.0.0.vtx.root'.format(brickID, brickID)
 
-#vertex probability
-c_prob = r.TCanvas('c_prob', 'vtx prob', 800, 600)
-h_prob = r.TH1D('vtx_prob', 'RUN0 data;prob', 30, 0, 1.1)
-h_prob_sim = r.TH1D('vtx_prob_mc', 'Monte Carlo BKG;prob', 100, 0, 1)
+#histo setup
+h_n = r.TH1D('n','Multiplicity;multiplicity', 50, 0, 50)
+h_flag = r.TH1D('flag','Flag;flag', 6, 0, 6)
+h_vz = r.TH1D('vz','Vertex z position;vz[um]', 400, -80000, 5000)
+h_vxy = r.TH2D('vxy', 'Vertex xy map;vx[um];vy[um]', 200, 0, 200000, 200, 0, 200000)
+h_n0 = r.TH1D('n0', 'Multiplicity;multiplicity', 47, 3, 50)
+h_nseg = r.TH1D('nseg', 'Number of segments;nseg', 56, 4, 60)
+h_npl = r.TH1D('npl', ' Number of crossing films;npl', 56, 4, 60)
+h_ff = r.TH1D('ff', 'Fill Factor;FF', 22, 0, 1.05)
+h_ip = r.TH1D('ip', 'Impact parameter;ip[um]', 100, 0, 300)
+h_meanff = r.TH1D('meanff', 'Mean Fill Factor;FF', 22, 0, 1.05)
+h_meanip = r.TH1D('meanip', 'Mean impact parameter;ip[um]', 100, 0, 300)
+h_prob = r.TH1D('prob', 'Probability;prob', 30, 0, 1.02)
+h_maxape = r.TH1D('maxape', 'Max aperture;max_ape', 50, 0, 2.5)
+h_meanape = r.TH1D('meanape', 'Mean aperture;mean_ape', 50, 0, 2.5)
+h_meanphi = r.TH1D('meanphi', 'Mean phi;mean_phi', 80, -4, 4)
+h_maxdphi = r.TH1D('maxdphi', 'Max phi diff;max_dphi', 40, 0, 4)
+h_offset = r.TH2D('offset', 'True neutrino vs vtx;x;y', 200, -20000, 20000, 200, -20000, 20000)
 
+N=40
+start_time = time()
+#reading vertices
+if not os.path.isfile(vtx_file):
+    print(f"{vtx_file} not found, interrupting")
+    exit()
 #save vertices in root file
-outputFile = r.TFile("vertex_selection_newsigma.root","RECREATE")	
-outputTree = r.TNtuple("vtx","Tree of vertices","quadrant:subquadrant:vID:flag:n:nin:nout:nseg:npl:nfirst:ff:meanIP:prob")
+outputTree = r.TTree("vtx","Tree of vertices")
 
-for quad in range(4):
-  for subquad in range(4):
-    print('Quadrant {}/16'.format(quad*4+subquad+1))
-    vertexFiles[quad].append(paths[quad]+'/vertextree'+str(subquad)+'.root')
-    dproc = r.EdbDataProc()
-    gAli = dproc.PVR()
-    scancond = r.EdbScanCond()
-    scancond.SetSigma0(4,4,0.005,0.005) #change sigma0
-    scancond.SetDegrad(4) #change angular degradation
-    gAli.SetScanCond(scancond)
-    vertexrec = r.EdbVertexRec()
-    vertexrec.SetPVRec(gAli)
-    vertexrec.eDZmax=3000.
-    vertexrec.eProbMin=0.0001
-    vertexrec.eImpMax=15.
-    vertexrec.eUseMom=False
-    vertexrec.eUseSegPar=True
-    vertexrec.eQualityMode=0
-    proc = r.EdbDataProc()
-    dproc.ReadVertexTree(vertexrec, vertexFiles[quad][subquad], "1")
-    vertices = gAli.eVTX
-    for vtx in vertices:
-      ntracks = vtx.N()
-      vx = vtx.VX()
-      vy = vtx.VY()
-      vz = vtx.VZ()
-      flag = vtx.Flag()
-      #cell cuts
-      if vx < pos[quad][subquad][0]: continue
-      if vx > pos[quad][subquad][1]: continue
-      if vy < pos[quad][subquad][2]: continue
-      if vy > pos[quad][subquad][3]: continue
-      #soft cuts
-      if ntracks < 3: continue
-      if vz < pos[quad][subquad][4]: continue
-      if vz > pos[quad][subquad][5]: continue
-      #flag 0 study
-      if flag == 0 or flag == 3:
-        nplList = []
-        nsegList = []
-        ffList = []
-        ipList = []
-        angleList = []
-        for itrack in range(ntracks):
-          track = vtx.GetTrack(itrack)
-          h_imp.Fill(vtx.GetVTa(itrack).Imp())         
-          ipList.append(vtx.GetVTa(itrack).Imp())
-          nseg = track.N()
-          npl = track.Npl()
-          nfirst = track.GetSegmentFirst().Plate()
-          nava = 34 - nfirst + 1
-          FF = float(nseg)/float(nava)
-          nplList.append(npl)
-          nsegList.append(nseg)
-          ffList.append(FF)
-          tx = track.TX()
-          ty = track.TY()
-          angle = r.TMath.Sqrt(tx*tx+ty*ty)
-          angleList.append(angle)
-          h_nseg.Fill(nseg)
-          h_npl.Fill(npl)
-          h_ff.Fill(FF)
-        h_prob.Fill(vtx.V().prob())
-        h_n0.Fill(ntracks)
-        h_nseg_avg.Fill(np.mean(nsegList))
-        h_npl_avg.Fill(np.mean(nplList))
-        h_ff_avg.Fill(np.mean(ffList))
-        h_imp_avg.Fill(np.mean(ipList))
-        outputTree.Fill(quad, subquad, vtx.ID(), flag, ntracks, 0, ntracks, np.mean(nsegList), np.mean(nplList), nfirst, np.mean(ffList), np.mean(ipList), vtx.V().prob())
+_brickID = array('i', [0])
+_vID = array('i', [0])
+_flag = array('i', [0])
+_vx = array('f', [0])
+_vy = array('f', [0])
+_vz = array('f', [0])
+_ntrks = array('i', [0])
+_nsegtot = array('i', [0])
+_nseg = array('i', N*[0])
+_npl = array('i', N*[0])
+_fillfact_t = array('f', N*[0])
+_fillfact = array('f', [0])
+_meanIP = array('f', [0])
+_ip = array('f', N*[0])
+_prob = array('f', [0])
+_maxaperture = array('f', [0])
+_meanaperture = array('f', [0])
+_maxdphi = array('f', [0])
+_meanphi = array('f', [0])
+_tTX = array('f', N*[0])
+_tTY = array('f', N*[0])
+_tID = array('i', N*[0])
+_tPDG = array('i', N*[0])
+_tEvt = array('i', N*[0])
+_MCEvt = array('i', [0])
+_evtPDG = array('f', [0])
+_trPDG = array('f', [0])
+_motherdPhi = array('f', [0])
+_signal = array('i', [0])
+_weight = array('f', [0])
 
-#montecarlo
+outputTree.Branch("brickID", _brickID, "brickID/I")
+outputTree.Branch("vID", _vID, "vID/I")
+outputTree.Branch("flag", _flag, "flag/I")
+outputTree.Branch("vx", _vx, "vx/F")
+outputTree.Branch("vy", _vy, "vy/F")
+outputTree.Branch("vz", _vz, "vz/F")
+outputTree.Branch("ntrks", _ntrks, "ntrks/I")
+outputTree.Branch("nsegtot", _nsegtot, "nsegtot/I")
+outputTree.Branch("nseg", _nseg, "nseg[ntrks]/I")
+outputTree.Branch("npl", _npl, "npl[ntrks]/I")
+outputTree.Branch("fillfact", _fillfact, "fillfact/F")
+outputTree.Branch("fillfact_t", _fillfact_t, "fillfact_t[ntrks]/F")
+outputTree.Branch("meanIP", _meanIP, "meanIP/F")
+outputTree.Branch("ip", _ip, "ip[ntrks]/F")
+outputTree.Branch("tTX", _tTX, "tTX[ntrks]/F")
+outputTree.Branch("tTY", _tTY, "tTY[ntrks]/F")
+outputTree.Branch("tID", _tID, "tID[ntrks]/I")
+outputTree.Branch("tPDG", _tPDG, "tPDG[ntrks]/I")
+outputTree.Branch("tEvt", _tEvt, "tEvt[ntrks]/I")
+outputTree.Branch("prob", _prob, "prob/F")
+outputTree.Branch("maxaperture", _maxaperture, "maxaperture/F")
+outputTree.Branch("meanaperture", _meanaperture, "meanaperture/F")
+outputTree.Branch("maxdphi", _maxdphi, "maxdphi/F")
+outputTree.Branch("meanphi", _meanphi, "meanphi/F")
+outputTree.Branch("MCEvt", _MCEvt, "MCEvt/I")
+outputTree.Branch("evtPDG", _evtPDG, "evtPDG/F")
+outputTree.Branch("trPDG", _trPDG, "trPDG/F")
+outputTree.Branch("motherdPhi", _motherdPhi, "motherdPhi/F")
+outputTree.Branch("signal", _signal, "signal/I")
+outputTree.Branch("weight", _weight, "weight/F")
+
+print("opening file: ",vtx_file)
 dproc = r.EdbDataProc()
 gAli = dproc.PVR()
 scancond = r.EdbScanCond()
-scancond.SetSigma0(4,4,0.005,0.005) #change sigma0
-scancond.SetDegrad(4) #change angular degradation
+scancond.SetSigma0(1.5,1.5,0.0015,0.0015)
+scancond.SetDegrad(3)
 gAli.SetScanCond(scancond)
 vertexrec = r.EdbVertexRec()
 vertexrec.SetPVRec(gAli)
@@ -155,273 +148,196 @@ vertexrec.eUseMom=False
 vertexrec.eUseSegPar=True
 vertexrec.eQualityMode=0
 proc = r.EdbDataProc()
-dproc.ReadVertexTree(vertexrec, "vertextree_sim.root", "1")
+dproc.ReadVertexTree(vertexrec, vtx_file, "1")
 vertices = gAli.eVTX
+
+fsim = r.TFile.Open(sim_file)
+cbmsim = fsim.cbmsim
+
+fake_vtx=0
+### VERTICES LOOP ###
 for vtx in vertices:
-  ntracks = vtx.N()
-  vx = vtx.VX()
-  vy = vtx.VY()
-  vz = vtx.VZ()
-  flag = vtx.Flag()
-  #soft cuts
-  if ntracks < 3: continue
-  if vz < pos_sim[0]: continue
-  if vz > pos_sim[1]: continue
-  #flag 0 study
-  if flag == 0 or flag == 3:
-    nplList = []
-    nsegList = []
+    ntrks = vtx.N()
+    nu_vtx=0
+    vx = vtx.VX()
+    vy = vtx.VY()
+    vz = vtx.VZ()
+    flag = vtx.Flag()
+    ntrks = vtx.N()
+    h_vz.Fill(vz)
+    h_vxy.Fill(vx, vy)
+    h_flag.Fill(flag)
+    h_n.Fill(ntrks)
+    if vz < zmin: continue
+    if vz > 0: continue
+    if flag !=0 and flag !=3: continue
+    if ntrks < 3: continue
+
+    apeList = []
+    phiList = []
+    TXList = []
+    TYList = []
     ffList = []
     ipList = []
-    angleList = []
-    for itrack in range(ntracks):
-      track = vtx.GetTrack(itrack)
-      h_imp_sim.Fill(vtx.GetVTa(itrack).Imp())         
-      ipList.append(vtx.GetVTa(itrack).Imp())
-      nseg = track.N()
-      npl = track.Npl()
-      nfirst = track.GetSegmentFirst().Plate()
-      nava = 31 - nfirst + 1
-      FF = float(nseg)/float(nava)
-      nplList.append(npl)
-      nsegList.append(nseg)
-      ffList.append(FF)
-      h_nseg_sim.Fill(nseg)
-      h_npl_sim.Fill(npl)
-      h_ff_sim.Fill(FF)
-      tx = track.TX()
-      ty = track.TY()
-      angle = r.TMath.Sqrt(tx*tx+ty*ty)
-      angleList.append(angle)
-    h_prob_sim.Fill(vtx.V().prob())
-    h_n0_sim.Fill(ntracks)
-    h_nseg_avg_sim.Fill(np.mean(nsegList))
-    h_npl_avg_sim.Fill(np.mean(nplList))
-    h_ff_avg_sim.Fill(np.mean(ffList))
-    h_imp_avg_sim.Fill(np.mean(ipList))
+    segidx = 0
 
-#flag0 stats
-cf0.cd(1).SetLogy()
-h_n0_sim.SetLineWidth(2)
-h_n0_sim.SetLineColor(r.kRed)
-h_n0_sim.SetFillStyle(3005)
-h_n0_sim.SetFillColor(r.kRed)
-h_n0_sim.DrawNormalized()
-#r.gPad.Update()
-#statsbox = r.gPad.GetPrimitive("stats")
-#y1 = statsbox.GetY1NDC() # (lower) y start position of stats box
-#y2 = statsbox.GetY2NDC() # (upper) y start position of stats box
-#newy1 = 2 * y1 - y2   # new (lower) y start position of stats box
-#newy2 = y1            # new (upper) y start position of stats box
-#statsbox.SetY1NDC(newy1) #    //set new y start position
-#statsbox.SetY2NDC(newy2) #   //set new y end position
-h_n0.SetLineWidth(2)
-h_n0.SetLineColor(1)
-h_n0.DrawNormalized("sames")
-h_n0.GetYaxis().SetRangeUser(10E-6, 2)
-cf0.cd(1).BuildLegend(0.3,0.72,0.62,0.9)
-cf0.cd(2).SetLogy()
-h_nseg_sim.SetLineWidth(2)
-h_nseg_sim.SetLineColor(r.kRed)
-h_nseg_sim.SetFillStyle(3005)
-h_nseg_sim.SetFillColor(r.kRed)
-h_nseg_sim.DrawNormalized()
-#r.gPad.Update()
-#statsbox = r.gPad.GetPrimitive("stats")
-#y1 = statsbox.GetY1NDC() # (lower) y start position of stats box
-#y2 = statsbox.GetY2NDC() # (upper) y start position of stats box
-#newy1 = 2 * y1 - y2   # new (lower) y start position of stats box
-#newy2 = y1            # new (upper) y start position of stats box
-#statsbox.SetY1NDC(newy1) #    //set new y start position
-#statsbox.SetY2NDC(newy2) #   //set new y end position
-h_nseg.SetLineWidth(2)
-h_nseg.SetLineColor(1)
-h_nseg.DrawNormalized("sames")
-cf0.cd(2).BuildLegend(0.3,0.72,0.62,0.9)
-cf0.cd(3).SetLogy()
-h_npl_sim.SetLineWidth(2)
-h_npl_sim.SetLineColor(r.kRed)
-h_npl_sim.SetFillStyle(3005)
-h_npl_sim.SetFillColor(r.kRed)
-h_npl_sim.DrawNormalized()
-#r.gPad.Update()
-#statsbox = r.gPad.GetPrimitive("stats")
-#y1 = statsbox.GetY1NDC() # (lower) y start position of stats box
-#y2 = statsbox.GetY2NDC() # (upper) y start position of stats box
-#newy1 = 2 * y1 - y2   # new (lower) y start position of stats box
-#newy2 = y1            # new (upper) y start position of stats box
-#statsbox.SetY1NDC(newy1) #    //set new y start position
-#statsbox.SetY2NDC(newy2) #   //set new y end position
-h_npl.SetLineWidth(2)
-h_npl.SetLineColor(1)
-h_npl.DrawNormalized("sames")
-cf0.cd(3).BuildLegend(0.3,0.72,0.62,0.9)
-cf0.cd(4).SetLogy()
-h_ff_sim.SetLineWidth(2)
-h_ff_sim.SetLineColor(r.kRed)
-h_ff_sim.SetFillStyle(3005)
-h_ff_sim.SetFillColor(r.kRed)
-h_ff_sim.DrawNormalized()
-#r.gPad.Update()
-#statsbox = r.gPad.GetPrimitive("stats")
-#y1 = statsbox.GetY1NDC() # (lower) y start position of stats box
-#y2 = statsbox.GetY2NDC() # (upper) y start position of stats box
-#newy1 = 2 * y1 - y2   # new (lower) y start position of stats box
-#newy2 = y1            # new (upper) y start position of stats box
-#statsbox.SetY1NDC(newy1) #    //set new y start position
-#statsbox.SetY2NDC(newy2) #   //set new y end position
-h_ff.SetLineWidth(2)
-h_ff.SetLineColor(1)
-h_ff.DrawNormalized("sames")
-cf0.cd(4).BuildLegend(0.3,0.72,0.62,0.9)
-cf0.Update()
-#cf0.Print('flag0_mc.png')
+    ### TRACKS LOOP ###
+    DictTrackPdg = {}
+    DictTrackEvt = {}
+    for itrack in range(ntrks):
+        track = vtx.GetTrack(itrack)
+        tEvt = track.MCEvt()
+        tID = track.MCTrack()
+        nseg = track.N()
+        ### SEGMENTS LOOP ###
+        DictSegPDG = {}
+        DictSegEvt = {}
+        DictSegID = {}
+        DictSegMother = {}
+        for iseg in range(nseg):
+            seg = track.GetSegment(iseg)
+            sPDG = seg.Vid(0)
+            sEvt = seg.MCEvt()
+            sID = seg.MCTrack()
+            sMother = seg.Aid(0)
+            AddToDict(DictSegPDG, sPDG)
+            AddToDict(DictSegEvt, sEvt)
+            AddToDict(DictSegID, sID)
+            AddToDict(DictSegMother, sMother)
+        trackPDG = max(DictSegPDG, key=DictSegPDG.get)
+        trackEvt = max(DictSegEvt, key=DictSegEvt.get)
+        trackID = max(DictSegID, key=DictSegID.get)
+        trackMother = max(DictSegMother, key=DictSegMother.get)
+        track_out = vtx.GetVTa(itrack).Zpos()
+        if trackMother == 0:
+            if numu and abs(trackPDG) == 13:
+                nu_vtx = True
+            elif nue and abs(trackPDG) == 11:
+                nu_vtx = True
+        npl = track.Npl()
+        impact_parameter = vtx.GetVTa(itrack).Imp()
+        h_ip.Fill(impact_parameter)         
+        ipList.append(impact_parameter)
+        nfirst = track.GetSegmentFirst().Plate()
+        nava = from_plate - nfirst + 1
+        FF = float(nseg)/float(nava)
+        phi = track.Phi()
+        ffList.append(FF)
+        TXList.append(track.TX())
+        TYList.append(track.TY())
+        phiList.append(phi)
+        h_nseg.Fill(nseg)
+        h_npl.Fill(npl)
+        h_ff.Fill(FF)
+        _nseg[itrack] = nseg
+        _npl[itrack] = npl
+        _fillfact_t[itrack] = FF
+        _ip[itrack] = impact_parameter
+        _tTX[itrack] = track.TX()
+        _tTY[itrack] = track.TY()
+        _tPDG[itrack] = trackPDG
+        _tEvt[itrack] = trackEvt
+        _tID[itrack] = trackID
+        AddToDict(DictTrackEvt, trackEvt)
 
-h_ff_avg_sim.SetLineWidth(2)
-h_ff_avg_sim.SetLineColor(r.kRed)
-h_ff_avg_sim.SetFillStyle(3005)
-h_ff_avg_sim.SetFillColor(r.kRed)
-'''
-#flag0 avg stats
-cf0avg.cd(1).SetLogy()
-h_n0_sim.SetLineColor(r.kRed)
-h_n0_sim.DrawNormalized()
-r.gPad.Update()
-h_n0_sim.GetYaxis().SetRangeUser(10E-6, 2)
-statsbox = r.gPad.GetPrimitive("stats")
-y1 = statsbox.GetY1NDC() # (lower) y start position of stats box
-y2 = statsbox.GetY2NDC() # (upper) y start position of stats box
-newy1 = 2 * y1 - y2   # new (lower) y start position of stats box
-newy2 = y1            # new (upper) y start position of stats box
-statsbox.SetY1NDC(newy1) #    //set new y start position
-statsbox.SetY2NDC(newy2) #   //set new y end position
-h_n0.DrawNormalized("sames")
-cf0avg.cd(1).BuildLegend(0.3,0.72,0.62,0.9)
-cf0avg.cd(2).SetLogy()
-h_nseg_avg_sim.SetLineColor(r.kRed)
-h_nseg_avg_sim.DrawNormalized()
-r.gPad.Update()
-statsbox = r.gPad.GetPrimitive("stats")
-y1 = statsbox.GetY1NDC() # (lower) y start position of stats box
-y2 = statsbox.GetY2NDC() # (upper) y start position of stats box
-newy1 = 2 * y1 - y2   # new (lower) y start position of stats box
-newy2 = y1            # new (upper) y start position of stats box
-statsbox.SetY1NDC(newy1) #    //set new y start position
-statsbox.SetY2NDC(newy2) #   //set new y end position
-h_nseg_avg.DrawNormalized("sames")
-cf0avg.cd(2).BuildLegend(0.3,0.72,0.62,0.9)
-cf0avg.cd(3).SetLogy()
-h_npl_avg_sim.SetLineColor(r.kRed)
-h_npl_avg_sim.DrawNormalized()
-r.gPad.Update()
-statsbox = r.gPad.GetPrimitive("stats")
-y1 = statsbox.GetY1NDC() # (lower) y start position of stats box
-y2 = statsbox.GetY2NDC() # (upper) y start position of stats box
-newy1 = 2 * y1 - y2   # new (lower) y start position of stats box
-newy2 = y1            # new (upper) y start position of stats box
-statsbox.SetY1NDC(newy1) #    //set new y start position
-statsbox.SetY2NDC(newy2) #   //set new y end position
-h_npl_avg.DrawNormalized("sames")
-cf0avg.cd(3).BuildLegend(0.3,0.7,0.6,0.9)
-cf0avg.cd(4).SetLogy()
-h_ff_avg_sim.SetLineColor(r.kRed)
-h_ff_avg_sim.DrawNormalized()
-r.gPad.Update()
-statsbox = r.gPad.GetPrimitive("stats")
-y1 = statsbox.GetY1NDC() # (lower) y start position of stats box
-y2 = statsbox.GetY2NDC() # (upper) y start position of stats box
-newy1 = 2 * y1 - y2   # new (lower) y start position of stats box
-newy2 = y1            # new (upper) y start position of stats box
-statsbox.SetY1NDC(newy1) #    //set new y start position
-statsbox.SetY2NDC(newy2) #   //set new y end position
-h_ff_avg.DrawNormalized("sames")
-cf0avg.cd(4).BuildLegend(0.3,0.7,0.6,0.9)
-h_ff_avg_sim.GetYaxis().SetRangeUser(3*10E-3, 0.4)
-cf0avg.Update()
-cf0avg.Print('flag0_avg_mc.png')
-'''
-#vertex probability
-c_prob.cd()
-h_prob_sim.SetLineWidth(2)
-h_prob_sim.SetLineColor(r.kRed)
-h_prob_sim.SetFillStyle(3005)
-h_prob_sim.SetFillColor(r.kRed)
-h_prob_sim.DrawNormalized()
-#r.gPad.Update()
-#statsbox = r.gPad.GetPrimitive("stats")
-#y1 = statsbox.GetY1NDC() # (lower) y start position of stats box
-#y2 = statsbox.GetY2NDC() # (upper) y start position of stats box
-#newy1 = 2 * y1 - y2   # new (lower) y start position of stats box
-#newy2 = y1            # new (upper) y start position of stats box
-#statsbox.SetY1NDC(newy1) #    //set new y start position
-#statsbox.SetY2NDC(newy2) #   //set new y end position
-h_prob.SetLineWidth(2)
-h_prob.SetLineColor(1)
-h_prob.DrawNormalized("sames")
-c_prob.BuildLegend(0.3,0.72,0.62,0.9)
-h_prob_sim.GetYaxis().SetRangeUser(0, 0.35)
-c_prob.Update()
-#c_prob.Print('prob_mc.png')
+        tID = track.MCTrack()
+        DictTrackPdg[tID] = trackPDG
+        for jtrack in range(itrack+1, ntrks):
+            t2 = vtx.GetTrack(jtrack)
+            tx= track.TX() - t2.TX()
+            ty= track.TY() - t2.TY()
+            apeList.append(r.TMath.Sqrt( tx*tx+ty*ty ))
 
+    if (numu or nue) and not nu_vtx:
+        fake_vtx+=1
+        continue
+    eventID = max(DictTrackEvt, key=DictTrackEvt.get)
+    cbmsim.GetEntry(eventID)
+    w = cbmsim.MCTrack[0].GetWeight()
+    h_n0.Fill(ntrks)
+    h_prob.Fill(vtx.V().prob())
+    h_maxape.Fill(vtx.MaxAperture())
+    h_meanff.Fill(np.mean(ffList))
+    h_meanip.Fill(np.mean(ipList))
+    h_meanape.Fill(np.mean(apeList))
+    h_meanphi.Fill(np.mean(phiList))
 
-#impact parameter
-c_imp.cd(1)
-h_imp_sim.SetLineWidth(2)
-h_imp_sim.SetLineColor(r.kRed)
-h_imp_sim.SetFillStyle(3005)
-h_imp_sim.SetFillColor(r.kRed)
-h_imp_sim.DrawNormalized()
-#r.gPad.Update()
-#statsbox = r.gPad.GetPrimitive("stats")
-#y1 = statsbox.GetY1NDC() # (lower) y start position of stats box
-#y2 = statsbox.GetY2NDC() # (upper) y start position of stats box
-#newy1 = 2 * y1 - y2   # new (lower) y start position of stats box
-#newy2 = y1            # new (upper) y start position of stats box
-#statsbox.SetY1NDC(newy1) #    //set new y start position
-#statsbox.SetY2NDC(newy2) #   //set new y end position
-h_imp.SetLineWidth(2)
-h_imp.SetLineColor(1)
-h_imp.DrawNormalized("sames")
-c_imp.cd(1).BuildLegend(0.3,0.72,0.62,0.9)
-c_imp.Update()
-c_imp.cd(2)
-h_imp_avg_sim.SetLineWidth(2)
-h_imp_avg_sim.SetLineColor(r.kRed)
-h_imp_avg_sim.SetFillStyle(3005)
-h_imp_avg_sim.SetFillColor(r.kRed)
-h_imp_avg_sim.DrawNormalized()
-#r.gPad.Update()
-#statsbox = r.gPad.GetPrimitive("stats")
-#y1 = statsbox.GetY1NDC() # (lower) y start position of stats box
-#y2 = statsbox.GetY2NDC() # (upper) y start position of stats box
-#newy1 = 2 * y1 - y2   # new (lower) y start position of stats box
-#newy2 = y1            # new (upper) y start position of stats box
-#statsbox.SetY1NDC(newy1) #    //set new y start position
-#statsbox.SetY2NDC(newy2) #   //set new y end position
-h_imp_avg.DrawNormalized("sames")
-c_imp.cd(2).BuildLegend(0.3,0.72,0.62,0.9)
-c_imp.Update()
-#c_imp.Print('ip_mc.png')
+    nx = cbmsim.MCTrack[0].GetStartX() * 1E+4 + 273000
+    ny = cbmsim.MCTrack[0].GetStartY() * 1E+4 - 158000
+    h_offset.Fill(nx-vx, ny-vy)
 
-#write output file
-outputFile.cd()
+    arrPhi = np.array(phiList)
+    arrTX = np.array(TXList)
+    arrTY = np.array(TYList)
+    dPhiList = {}
+    for itrack in range(ntrks):
+        track = vtx.GetTrack(itrack)
+        trackID = track.MCTrack()
+        aor = r.TMath.ATan2(np.sum(arrTY) - arrTY[itrack], np.sum(arrTX) - arrTX[itrack])
+        difference = r.TMath.Abs(arrPhi[itrack] - aor)
+        if difference > r.TMath.Pi():
+            difference = 2*r.TMath.Pi() - difference
+        dPhiList[trackID] = difference
+    track_maxdphi = max(dPhiList, key=dPhiList.get)
+    maxdphi = dPhiList[track_maxdphi]
+    h_maxdphi.Fill(maxdphi)
+
+    _brickID[0] = brickID
+    _trPDG[0] = DictTrackPdg[track_maxdphi]
+    _MCEvt[0] = eventID
+    if track_maxdphi < len(cbmsim.MCTrack):
+        motherID = cbmsim.MCTrack[track_maxdphi].GetMotherId()
+        _motherdPhi[0] = motherID
+    else:
+        _motherdPhi[0] = 10
+    
+    _vx[0]=vx
+    _vy[0]=vy
+    _vz[0]=vz
+    _flag[0]=flag
+    _vID[0] = vtx.ID()
+    _ntrks[0] = ntrks
+    _nsegtot[0] = segidx
+    _fillfact[0] = np.mean(ffList)
+    _meanIP[0] = np.mean(ipList)
+    _prob[0] = vtx.V().prob()
+    _maxaperture[0] = vtx.MaxAperture()
+    _maxdphi[0] = maxdphi
+    _meanphi[0] = np.mean(phiList)
+    _meanaperture[0] = np.mean(apeList)
+    _signal[0] = 1
+    _weight[0] = w
+    outputTree.Fill()
+    
+fsim.Close()
+del gAli
+
+#write output files
+outputFile = r.TFile(out_dir+out_name.format(brickID),"RECREATE")	
 outputTree.Write()
-outputFile.Close()
 
-histoFile = r.TFile("histo.root", "RECREATE")
-h_n0_sim.Write()
-h_nseg_sim.Write()
-h_npl_sim.Write()
-h_ff_sim.Write()
-h_imp_sim.Write()
-h_ff_avg_sim.Write()
-h_imp_avg_sim.Write()
-h_prob_sim.Write()
+histoFile = r.TFile(out_dir+"/hist_out_{}.root".format(brickID), "RECREATE")
+h_n.Write()
+h_flag.Write()
+h_vxy.Write()
+h_vz.Write()
 h_n0.Write()
 h_nseg.Write()
 h_npl.Write()
 h_ff.Write()
-h_imp.Write()
+h_ip.Write()
+h_meanff.Write()
+h_meanip.Write()
 h_prob.Write()
+h_maxape.Write()
+h_meanape.Write()
+h_maxdphi.Write()
+h_meanphi.Write()
+h_offset.Write()
 histoFile.Write()
 histoFile.Close()
+outputFile.Close()
+
+print(f"fake vertices: {fake_vtx}")
+elapsed_time = time() - start_time
+print("TOTAL ELAPSED TIME ", elapsed_time)
