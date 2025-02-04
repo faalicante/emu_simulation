@@ -113,6 +113,15 @@ brickRanges = getBrickRanges()
 MyPDG = ROOT.TDatabasePDG.Instance()
 failedPDGs = list()
 
+
+tag = ''
+if len(sys.argv) == 2: tag = 'to_evt_'+str(up_to_ev)
+elif  len(sys.argv) == 3: tag = 'from_ev_'+str(from_ev)+'_to_ev_'+str(to_ev)
+outNtupleName = outPath+'/ntuple_.'+tag+'.root'
+outNtuple = ROOT.TFile.Open(outNtupleName, 'RECREATE')
+ntuple = ROOT.TNtuple("cbmsim", "Ntuple of nu",'evID:flag:nu_E:nu_tx:nu_ty:nu_vx:nu_vy:nu_vz:nu_wall:nu_brick:lep_E:lep_tx:lep_ty:n_prong:neu_vtx')
+ntuple.SetDirectory(outNtuple)
+
 h               = {}
 e_cuts          = {200:'_e200', 500:'_e500', 1000:'_e1000'}
 angle_cuts      = {0:'', 1:'_angle1'}
@@ -149,10 +158,6 @@ for vcut in vis_cuts.values():
     ut.bookHist(h, f'{particle}_TXTY{vcut}', particle+';TX;TY', 300, -1.5, 1.5, 300, -1.5, 1.5)
     ut.bookHist(h, f'{particle}_PT{vcut}', particle+';PT', 300, 0, 3000)
 
-outNtupleName = outPath+'/ntuple_.'+tag+'.root'
-outNtuple = ROOT.TFile.Open(outNtupleName, 'RECREATE')
-ntuple = ROOT.TNtuple("cbmsim", "Ntuple of nu",'evID:flag:nu_E:nu_tx:nu_ty:nu_vx:nu_vy:nu_vz:nu_wall:nu_brick:lep_E:lep_tx:lep_ty:n_prong:neu_vtx')
-ntuple.SetDirectory(outNtuple)
 
 ###### EVENT LOOP ##############
 for i_event, event in enumerate(sTree):
@@ -301,9 +306,7 @@ for i_event, event in enumerate(sTree):
   ntuple.Fill(i_event, flag, nutrack.GetEnergy(), nu_angle.X(), nu_angle.Y(), nu_vtx.X(), nu_vtx.Y(), nu_vtx.Z(), nu_wall_int, nu_brick_int, lep_energy, lep_angle.X(), lep_angle.Y(), n_prong[0], n_neu_vtx[0])
 ###########################################
 print('Arrived at event', i_event)
-tag = ''
-if len(sys.argv) == 2: tag = 'to_evt_'+str(up_to_ev)
-elif  len(sys.argv) == 3: tag = 'from_ev_'+str(from_ev)+'_to_ev_'+str(to_ev)
+
 for nu in ['numu', 'nue']:
   outFileName = outPath+'/histo_'+nu+'.'+tag+'.root'
   outFile = ROOT.TFile(outFileName, 'RECREATE')
