@@ -122,6 +122,7 @@ for nu in ['numu', 'nue', 'numu_c', 'nue_c', 'neu']:
   ut.bookHist(h, f'{nu}_vx_all', f";{nu} vtx X[cm]", int(wallRanges['X'][4][1]-wallRanges['X'][0][0]+40)*10, wallRanges['X'][0][0]-20, wallRanges['X'][4][1]+20)
   ut.bookHist(h, f'{nu}_vy_all', f";{nu} vtx Y[cm]", int(wallRanges['Y'][4][1]-wallRanges['Y'][0][0]+40)*10, wallRanges['Y'][0][0]-20, wallRanges['Y'][4][1]+20)
   ut.bookHist(h, f'{nu}_vz_all', f";{nu} vtx Z[cm]", int(wallRanges['Z'][4][1]-wallRanges['Z'][0][0]+40)*10, wallRanges['Z'][0][0]-20, wallRanges['Z'][4][1]+20)
+  ut.bookHist(h, f'{nu}_lost', f";{nu} vtx outside of target", 2,0,1)
 for vcut in vis_cuts.values():
   for nu in ['numu', 'nue', 'numu_c', 'nue_c', 'neu']:
     ut.bookHist(h, f'{nu}_energy{vcut}', f';E_{nu}', 240, 0, 4800)
@@ -148,7 +149,7 @@ for vcut in vis_cuts.values():
     ut.bookHist(h, f'{particle}_TXTY{vcut}', particle+';TX;TY', 300, -1.5, 1.5, 300, -1.5, 1.5)
     ut.bookHist(h, f'{particle}_PT{vcut}', particle+';PT', 300, 0, 3000)
 
-ntuple = ROOT.TNtuple("cbmsim", "Ntuple of nu",'flag:evID:FLUKA_weight:nu_E:nu_tx:nu_ty:nu_vx:nu_vy:nu_vz:nu_wall:nu_brick:lep_E:lep_tx:lep_ty:n_prong:neu_vtx')
+ntuple = ROOT.TNtuple("cbmsim", "Ntuple of nu",'evID:flag:nu_E:nu_tx:nu_ty:nu_vx:nu_vy:nu_vz:nu_wall:nu_brick:lep_E:lep_tx:lep_ty:n_prong:neu_vtx')
 
 
 ###### EVENT LOOP ##############
@@ -173,6 +174,7 @@ for i_event, event in enumerate(sTree):
   #Process identification
   gst.GetEntry(i_event)
   from_charm = gst.FLUKA_weight
+  flag = 0 
   if is_numu:
     nu = 'numu' 
     particle = 'mu'
@@ -186,12 +188,14 @@ for i_event, event in enumerate(sTree):
     flag+=10
 
   nu_vtx = ROOT.TVector3(nutrack.GetStartX(), nutrack.GetStartY(), nutrack.GetStartZ())
-  h[f'{nu}_vx_all'].Fill(nutrack.GetStartX())
-  h[f'{nu}_vy_all'].Fill(nutrack.GetStartY())
-  h[f'{nu}_vz_all'].Fill(nutrack.GetStartZ())
+  h[f'{nu}_vx_all'].Fill(nu_vtx.X())
+  h[f'{nu}_vy_all'].Fill(nu_vtx.Y())
+  h[f'{nu}_vz_all'].Fill(nu_vtx.Z())
   nu_in_brick, nu_brick_int = getBrickInt(nu_vtx, brickRanges)
   nu_wall_int, nu_brick_int = decodeBrick(nu_brick_int)
-  if not nu_in_brick: continue  # excluding neutrinos not interacting in the target
+  if not nu_in_brick: # excluding neutrinos not interacting in the target
+    h[f'{nu}_lost'].Fill(0)
+    continue  
   nu_angle = ROOT.TVector3(nutrack.GetPx()/nutrack.GetPz(), nutrack.GetPy()/nutrack.GetPz(), 1.)
   lep_angle = ROOT.TVector3(leptrack.GetPx()/(leptrack.GetPz()), leptrack.GetPy()/(leptrack.GetPz()), 1.)
   lep_pt = leptrack.GetPt()
@@ -204,12 +208,12 @@ for i_event, event in enumerate(sTree):
     h[f'{nu}_TX{vcut}'].Fill(nu_angle.X())
     h[f'{nu}_TY{vcut}'].Fill(nu_angle.Y())
     h[f'{nu}_TXTY{vcut}'].Fill(nu_angle.X(), nu_angle.Y())
-    h[f'{nu}_vx{vcut}'].Fill(nutrack.GetStartX())
-    h[f'{nu}_vy{vcut}'].Fill(nutrack.GetStartY())
-    h[f'{nu}_vz{vcut}'].Fill(nutrack.GetStartZ())
-    h[f'{nu}_vxy{vcut}'].Fill(nutrack.GetStartX(), nutrack.GetStartY())
-    h[f'{nu}_vxz{vcut}'].Fill(nutrack.GetStartZ(), nutrack.GetStartX())
-    h[f'{nu}_vyz{vcut}'].Fill(nutrack.GetStartZ(), nutrack.GetStartY())
+    h[f'{nu}_vx{vcut}'].Fill(nu_vtx.X())
+    h[f'{nu}_vy{vcut}'].Fill(nu_vtx.Y())
+    h[f'{nu}_vz{vcut}'].Fill(nu_vtx.Z())
+    h[f'{nu}_vxy{vcut}'].Fill(nu_vtx.X(), nu_vtx.Y())
+    h[f'{nu}_vxz{vcut}'].Fill(nu_vtx.Z(), nu_vtx.X())
+    h[f'{nu}_vyz{vcut}'].Fill(nu_vtx.Z(), nu_vtx.Y())
     h[f'{nu}_difftheta_TXTY{vcut}'].Fill(diff_theta.X(), diff_theta.Y())
     h[f'{nu}_lep_Energy{vcut}'].Fill(nutrack.GetEnergy(), leptrack.GetEnergy())
     h[f'{nu}_vtx_wall{vcut}'].Fill(nu_wall_int)
@@ -292,7 +296,7 @@ for i_event, event in enumerate(sTree):
     if ecut and (lep_theta>1 or lep_energy < ecut/1e3): continue
     h[f'{nu}_n_prong{vcut}'].Fill(n_prong[ecut])
     h[f'{nu}_neu_vtx{vcut}'].Fill(n_neu_vtx[ecut])
-  ntuple.Fill(flag, i_event, from_charm, nutrack.GetEnergy(), nu_angle.X(), nu_angle.Y(), nu_vtx.X(), nu_vtx.Y(), nu_vtx.Z(), nu_wall_int, nu_brick_int, lep_energy, lep_angle.X(), lep_angle.Y(), n_prong[0], n_neu_vtx[0])
+  ntuple.Fill(i_event, flag, nutrack.GetEnergy(), nu_angle.X(), nu_angle.Y(), nu_vtx.X(), nu_vtx.Y(), nu_vtx.Z(), nu_wall_int, nu_brick_int, lep_energy, lep_angle.X(), lep_angle.Y(), n_prong[0], n_neu_vtx[0])
 ###########################################
 print('Arrived at event', i_event-1)
 tag = ''
