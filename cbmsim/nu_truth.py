@@ -117,6 +117,11 @@ h               = {}
 e_cuts          = {200:'_e200', 500:'_e500', 1000:'_e1000'}
 angle_cuts      = {0:'', 1:'_angle1'}
 vis_cuts        = {**angle_cuts, **e_cuts}
+
+for nu in ['numu', 'nue', 'numu_c', 'nue_c', 'neu']:
+  ut.bookHist(h, f'{nu}_vx_all', f";{nu} vtx X[cm]", int(wallRanges['X'][4][1]-wallRanges['X'][0][0]+40)*10, wallRanges['X'][0][0]-20, wallRanges['X'][4][1]+20)
+  ut.bookHist(h, f'{nu}_vy_all', f";{nu} vtx Y[cm]", int(wallRanges['Y'][4][1]-wallRanges['Y'][0][0]+40)*10, wallRanges['Y'][0][0]-20, wallRanges['Y'][4][1]+20)
+  ut.bookHist(h, f'{nu}_vz_all', f";{nu} vtx Z[cm]", int(wallRanges['Z'][4][1]-wallRanges['Z'][0][0]+40)*10, wallRanges['Z'][0][0]-20, wallRanges['Z'][4][1]+20)
 for vcut in vis_cuts.values():
   for nu in ['numu', 'nue', 'numu_c', 'nue_c', 'neu']:
     ut.bookHist(h, f'{nu}_energy{vcut}', f';E_{nu}', 240, 0, 4800)
@@ -143,7 +148,7 @@ for vcut in vis_cuts.values():
     ut.bookHist(h, f'{particle}_TXTY{vcut}', particle+';TX;TY', 300, -1.5, 1.5, 300, -1.5, 1.5)
     ut.bookHist(h, f'{particle}_PT{vcut}', particle+';PT', 300, 0, 3000)
 
-ntuple = ROOT.TNtuple("cbmsim", "Ntuple of nu",'evID:FLUKA_weight:nu_E:nu_tx:nu_ty:nu_vx:nu_vy:nu_vz:nu_wall:nu_brick:lep_E:lep_tx:lep_ty:n_prong:neu_vtx')
+ntuple = ROOT.TNtuple("cbmsim", "Ntuple of nu",'flag:evID:FLUKA_weight:nu_E:nu_tx:nu_ty:nu_vx:nu_vy:nu_vz:nu_wall:nu_brick:lep_E:lep_tx:lep_ty:n_prong:neu_vtx')
 
 
 ###### EVENT LOOP ##############
@@ -171,12 +176,19 @@ for i_event, event in enumerate(sTree):
   if is_numu:
     nu = 'numu' 
     particle = 'mu'
+    flag = 1
   elif is_nue:
     nu = 'nue'
     particle = 'e'
-  if from_charm ==1: nu = nu+'_c'
+    flag = 2
+  if from_charm == 1:
+    nu = nu+'_c'
+    flag+=10
 
   nu_vtx = ROOT.TVector3(nutrack.GetStartX(), nutrack.GetStartY(), nutrack.GetStartZ())
+  h[f'{nu}_vx_all'].Fill(nutrack.GetStartX())
+  h[f'{nu}_vy_all'].Fill(nutrack.GetStartY())
+  h[f'{nu}_vz_all'].Fill(nutrack.GetStartZ())
   nu_in_brick, nu_brick_int = getBrickInt(nu_vtx, brickRanges)
   nu_wall_int, nu_brick_int = decodeBrick(nu_brick_int)
   if not nu_in_brick: continue  # excluding neutrinos not interacting in the target
@@ -280,7 +292,7 @@ for i_event, event in enumerate(sTree):
     if ecut and (lep_theta>1 or lep_energy < ecut/1e3): continue
     h[f'{nu}_n_prong{vcut}'].Fill(n_prong[ecut])
     h[f'{nu}_neu_vtx{vcut}'].Fill(n_neu_vtx[ecut])
-  ntuple.Fill(i_event, from_charm, nutrack.GetEnergy(), nu_angle.X(), nu_angle.Y(), nu_vtx.X(), nu_vtx.Y(), nu_vtx.Z(), nu_wall_int, nu_brick_int, lep_energy, lep_angle.X(), lep_angle.Y(), n_prong[0], n_neu_vtx[0])
+  ntuple.Fill(flag, i_event, from_charm, nutrack.GetEnergy(), nu_angle.X(), nu_angle.Y(), nu_vtx.X(), nu_vtx.Y(), nu_vtx.Z(), nu_wall_int, nu_brick_int, lep_energy, lep_angle.X(), lep_angle.Y(), n_prong[0], n_neu_vtx[0])
 ###########################################
 print('Arrived at event', i_event-1)
 tag = ''
