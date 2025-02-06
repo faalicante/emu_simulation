@@ -74,15 +74,18 @@ def decodeBrick(brick):
   brick = wall*10 + (brick % 4 + 1)
   return wall, brick
 
-def FindMuons(MCTrack):
-    muons = {'In': None, 'Out': None}
-    muons['Out'] = 0
-    for itrk, track in enumerate(MCTrack):
-        if ROOT.TMath.Abs(track.GetPdgCode())!=13: continue
-        if track.GetMotherId()!=0:continue
-        if track.GetPz() > 0: continue
-        muons['In'] = itrk
-    return muons
+def scattAngle(nu_angle, lep_angle):
+  num = lep_angle.X()*nu_angle.X()+lep_angle.Y()*nu_angle.Y()+1
+  denom = ROOT.TMath.Sqrt(lep_angle.X()**2+lep_angle.Y()**2+1)*ROOT.TMath.Sqrt(nu_angle.X()**2+nu_angle.Y()**2+1)
+  scatt_angle = ROOT.TMath.Acos(float(num)/float(denom))  ##dot product
+  return scatt_angle
+
+def scattPhi(px1, py1, px2, py2):
+  phi1 = ROOT.TMath.ATan2(py1, px1)
+  phi2 = ROOT.TMath.ATan2(py2, px2)
+  scatt_phi = ROOT.TMath.Abs(phi1-phi2)
+  if scatt_phi > ROOT.TMath.Pi(): scatt_phi = 2*ROOT.TMath.Pi() - scatt_phi
+  return scatt_phi
 
 
 pathSim = '/eos/experiment/sndlhc/MonteCarlo/Neutrinos/Genie/nu_sim_activeemu_withcrisfiles_25_July_2022/'
@@ -117,7 +120,7 @@ failedPDGs = list()
 tag = ''
 if len(sys.argv) == 2: tag = 'to_evt_'+str(up_to_ev)
 elif  len(sys.argv) == 3: tag = 'from_ev_'+str(from_ev)+'_to_ev_'+str(to_ev)
-outNtupleName = outPath+'/ntuple_.'+tag+'.root'
+outNtupleName = outPath+'/ntuple_nu.'+tag+'.root'
 outNtuple = ROOT.TFile.Open(outNtupleName, 'RECREATE')
 ntuple = ROOT.TNtuple("cbmsim", "Ntuple of nu",'evID:flag:nu_E:nu_vx:nu_vy:nu_vz:nu_wall:nu_brick:lep_E:lep_tx:lep_ty:n_prong:neu_vtx')
 ntuple.SetDirectory(outNtuple)
@@ -148,7 +151,7 @@ for nu in ['numu', 'nue', 'numu_c', 'nue_c', 'neu']:
     ut.bookHist(h, f'{nu}_n_prong{vcut}', "N. of charged tracks per vtx; Multiplicity", 50, 0, 50)
   if nu != 'neu':
     ut.bookHist(h, f'{nu}_neu_vtx', "N. of neutral secondary vertices; N", 100, 0, 100)
-    ut.bookHist(h, f'{nu}_difftheta_TXTY', 'Difference between outgoing lepton and incoming nu TXTY;TX;TY', 1000, -0.1, 0.1, 1000, -0.1, 0.1)
+    ut.bookHist(h, f'{nu}_scatt_ang', 'Scattering angle between outgoing lepton and incoming nu;#theta;#phi', 320, 3.2, 3.2, 320, 3.2, 3.2)
     ut.bookHist(h, f'{nu}_lep_Energy', f'Energy correlation between outgoing lepton and incoming nu ;E_{nu};E_lep', 200, 0, 4000, 200, 0, 4000)
 for particle in ['mu', 'e', 'hadron', 'hadron_sec']:
   for vcut in vis_cuts.values():
@@ -209,11 +212,11 @@ for i_event, event in enumerate(sTree):
   nu_angle = ROOT.TVector3(nutrack.GetPx()/nutrack.GetPz(), nutrack.GetPy()/nutrack.GetPz(), 1.)
   lep_angle = ROOT.TVector3(leptrack.GetPx()/(leptrack.GetPz()), leptrack.GetPy()/(leptrack.GetPz()), 1.)
   lep_pt = leptrack.GetPt()
-  diff_theta = lep_angle-nu_angle ##dot product
+  scatt_angle = scattAngle(nu_angle, lep_angle)
+  scatt_phi = scattPhi(nutrack.GetPx(), nutrack.GetPy(), leptrack.GetPx(), leptrack.GetPy())
   nu_energy = nutrack.GetEnergy()
   lep_energy = leptrack.GetEnergy()
   lep_theta = ROOT.TMath.Sqrt(lep_angle.X()**2 + lep_angle.Y()**2)
-  #if (lep_theta>1 or lep_energy < ecut/1e3): continue
   h[f'{nu}_energy'].Fill(nu_energy)
   h[f'{nu}_TX'].Fill(nu_angle.X())
   h[f'{nu}_TY'].Fill(nu_angle.Y())
@@ -224,7 +227,7 @@ for i_event, event in enumerate(sTree):
   h[f'{nu}_vxy'].Fill(nu_vtx.X(), nu_vtx.Y())
   h[f'{nu}_vxz'].Fill(nu_vtx.Z(), nu_vtx.X())
   h[f'{nu}_vyz'].Fill(nu_vtx.Z(), nu_vtx.Y())
-  h[f'{nu}_difftheta_TXTY'].Fill(diff_theta.X(), diff_theta.Y())
+  h[f'{nu}_scatt_ang'].Fill(scatt_angle, scatt_phi)
   h[f'{nu}_lep_Energy'].Fill(nu_energy, lep_energy)
   h[f'{nu}_vtx_wall'].Fill(nu_wall_int)
   h[f'{nu}_vtx_brick'].Fill(nu_brick_int)
@@ -239,7 +242,7 @@ for i_event, event in enumerate(sTree):
   n_prong = {0:0, 1:0, 200:0, 500:0, 1000:0}
   n_neu_vtx = 0
   for i_track, track in enumerate(event.MCTrack):
-    if i_track < 2 : continue #skip neutrino and lepton
+    if i_track < 1 : continue #skip neutrino
     MotherID = track.GetMotherId()
     Energy = track.GetEnergy()
     PdgCode = track.GetPdgCode()
@@ -254,12 +257,13 @@ for i_event, event in enumerate(sTree):
     for ecut, vcut in vis_cuts.items():
       if ecut and (theta>1 or Energy < ecut/1e3): continue
       if MotherID == 0 and charge != 0:
+        n_prong[ecut] += 1
+        if i_track == 1: continue #skip lepton
         h[f'hadron_energy{vcut}'].Fill(Energy)
         h[f'hadron_TX{vcut}'].Fill(tx)
         h[f'hadron_TY{vcut}'].Fill(ty)
         h[f'hadron_TXTY{vcut}'].Fill(tx, ty)
         h[f'hadron_PT{vcut}'].Fill(pt)
-        n_prong[ecut] += 1
     if charge == 0:
       n_prong_sec = {0:0, 1:0, 200:0, 500:0, 1000:0}
       for j_track, track2 in enumerate(event.MCTrack):
@@ -307,10 +311,9 @@ for i_event, event in enumerate(sTree):
       h[f'neu_vtx_brick'].Fill(neu_brick_int)
   
   for ecut, vcut in vis_cuts.items():
-  #if (lep_theta>1 or lep_energy < ecut/1e3): continue
     h[f'{nu}_n_prong{vcut}'].Fill(n_prong[ecut])
   h[f'{nu}_neu_vtx'].Fill(n_neu_vtx)
-  ntuple.Fill(i_event, flag, nu_energy, nu_vtx.X(), nu_vtx.Y(), nu_vtx.Z(), nu_wall_int, nu_brick_int, lep_energy, lep_angle.X(), lep_angle.Y(), n_prong[1], n_neu_vtx)
+  ntuple.Fill(i_event, flag, nu_energy, nu_vtx.X(), nu_vtx.Y(), nu_vtx.Z(), nu_wall_int, nu_brick_int, lep_energy, lep_angle.X(), lep_angle.Y(), n_prong[0], n_neu_vtx)
 ###########################################
 print('Arrived at event', i_event-1)
 
