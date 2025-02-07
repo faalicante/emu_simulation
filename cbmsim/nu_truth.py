@@ -77,7 +77,7 @@ def decodeBrick(brick):
 def scattAngle(nu_angle, lep_angle):
   num = lep_angle.X()*nu_angle.X()+lep_angle.Y()*nu_angle.Y()+1
   denom = ROOT.TMath.Sqrt(lep_angle.X()**2+lep_angle.Y()**2+1)*ROOT.TMath.Sqrt(nu_angle.X()**2+nu_angle.Y()**2+1)
-  scatt_angle = ROOT.TMath.Acos(float(num)/float(denom))  ##dot product
+  scatt_angle = ROOT.TMath.ACos(float(num)/float(denom))  ##dot product
   return scatt_angle
 
 def scattPhi(px1, py1, px2, py2):
