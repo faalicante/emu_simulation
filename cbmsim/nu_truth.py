@@ -3,10 +3,17 @@ import os,sys
 from array import array
 import rootUtils as ut
 import time
-from datetime import date
-today = date.today().strftime('%d%m%y')
+import SndlhcGeo
 start_time = time.time()
 ROOT.gROOT.SetBatch(ROOT.kTRUE)
+
+from argparse import ArgumentParser
+parser = ArgumentParser()
+parser.add_argument("--from_evt", dest="from_evt", required=False, type=int, default=0)
+parser.add_argument("--to_evt", dest="to_evt", required=True, type=int, default=None)
+parser.add_argument("--numu", dest="numu", required=False, type=bool, default=None)
+parser.add_argument("--nue", dest="nue", required=False, type=int, default=None)
+options = parser.parse_args()
 
 def getOriginAndDims(nodepath):
   nav = ROOT.gGeoManager.GetCurrentNavigator()
@@ -87,28 +94,36 @@ def scattPhi(px1, py1, px2, py2):
   if scatt_phi > ROOT.TMath.Pi(): scatt_phi = 2*ROOT.TMath.Pi() - scatt_phi
   return scatt_phi
 
+numu = options.numu
+nue = options.nue
+from_evt = options.from_evt
+to_evt = options.to_evt
 
-pathSim = '/eos/experiment/sndlhc/MonteCarlo/Neutrinos/Genie/nu_sim_activeemu_withcrisfiles_25_July_2022/'
+outPath = '/afs/cern.ch/work/f/falicant/public/emu_simulation/out4'
+
+if numu:
+  pathSim = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc_eff10_smear0'
+  nuf = 'numu'
+  lep = 'mu'
+  flag = 1
+elif nue:
+  pathSim = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/nuecc_eff10_smear0'
+  nuf = 'nue'
+  lep = 'e'
+  flag = 2
+else:
+  print('No input')
+  sys.exit(1)
+
 geoFile =  pathSim + '/geofile_full.Genie-TGeant4.root'
-outPath = '/afs/cern.ch/work/f/falicant/public/emu_simulation/out3'
-
-import SndlhcGeo
 geo = SndlhcGeo.GeoInterface(geoFile)
 
-simName = "/sndLHC.Genie-TGeant4.root"
+simName = '/inECC_sndLHC.Genie-TGeant4.root'
 simFile = ROOT.TFile.Open(pathSim+simName)
 sTree = simFile.cbmsim
-gst = simFile.gst
+# gst = simFile.gst
 nentries = sTree.GetEntries()
 print('There are ', nentries, 'entries')
-
-up_to_ev = None
-if len(sys.argv)>1:
-  up_to_ev = int(sys.argv[1])
-  if len(sys.argv) == 3:
-    from_ev = int(sys.argv[1])
-    to_ev = int(sys.argv[2])
-    print('Starting from ev', from_ev, 'to ev', to_ev)
 
 wallRanges = getWallRanges()
 brickRanges = getBrickRanges()
@@ -117,10 +132,8 @@ MyPDG = ROOT.TDatabasePDG.Instance()
 failedPDGs = list()
 
 
-tag = ''
-if len(sys.argv) == 2: tag = 'to_evt_'+str(up_to_ev)
-elif  len(sys.argv) == 3: tag = 'from_ev_'+str(from_ev)+'_to_ev_'+str(to_ev)
-outNtupleName = outPath+'/ntuple_nu.'+tag+'.root'
+tag = 'from_evt_'+str(from_evt)+'_to_evt_'+str(to_evt)
+outNtupleName = outPath+f'/ntuple_{nuf}_b11.{tag}.root'
 outNtuple = ROOT.TFile.Open(outNtupleName, 'RECREATE')
 ntuple = ROOT.TNtuple("cbmsim", "Ntuple of nu",'evID:flag:nu_E:nu_vx:nu_vy:nu_vz:nu_wall:nu_brick:lep_E:lep_tx:lep_ty:n_prong:neu_vtx')
 ntuple.SetDirectory(outNtuple)
@@ -130,7 +143,7 @@ e_cuts          = {200:'_e200', 500:'_e500', 1000:'_e1000'}
 angle_cuts      = {0:'', 1:'_angle1'}
 vis_cuts        = {**angle_cuts, **e_cuts}
 
-for nu in ['numu', 'nue', 'numu_c', 'nue_c', 'neu']:
+for nu in [nuf, 'neu']:
   ut.bookHist(h, f'{nu}_vx_all', f";{nu} vtx X[cm]", int(wallRanges['X'][4][1]-wallRanges['X'][0][0]+40)*10, wallRanges['X'][0][0]-20, wallRanges['X'][4][1]+20)
   ut.bookHist(h, f'{nu}_vy_all', f";{nu} vtx Y[cm]", int(wallRanges['Y'][4][1]-wallRanges['Y'][0][0]+40)*10, wallRanges['Y'][0][0]-20, wallRanges['Y'][4][1]+20)
   ut.bookHist(h, f'{nu}_vz_all', f";{nu} vtx Z[cm]", int(wallRanges['Z'][4][1]-wallRanges['Z'][0][0]+40)*10, wallRanges['Z'][0][0]-20, wallRanges['Z'][4][1]+20)
@@ -149,53 +162,49 @@ for nu in ['numu', 'nue', 'numu_c', 'nue_c', 'neu']:
   ut.bookHist(h, f'{nu}_vtx_brick', f"{nu} vertex vs brick; Brick", 60, 0, 60)
   for vcut in vis_cuts.values():
     ut.bookHist(h, f'{nu}_n_prong{vcut}', "N. of charged tracks per vtx; Multiplicity", 50, 0, 50)
-  if nu != 'neu':
-    ut.bookHist(h, f'{nu}_neu_vtx', "N. of neutral secondary vertices; N", 100, 0, 100)
-    ut.bookHist(h, f'{nu}_scatt_ang', 'Scattering angle between outgoing lepton and incoming nu;#theta;#phi', 320, 3.2, 3.2, 320, 3.2, 3.2)
-    ut.bookHist(h, f'{nu}_lep_Energy', f'Energy correlation between outgoing lepton and incoming nu ;E_{nu};E_lep', 200, 0, 4000, 200, 0, 4000)
-for particle in ['mu', 'e', 'hadron', 'hadron_sec']:
+ut.bookHist(h, f'{nuf}_neu_vtx', "N. of neutral secondary vertices; N", 100, 0, 100)
+ut.bookHist(h, f'{nuf}_scatt_ang', 'Scattering angle between outgoing lepton and incoming nu;#theta;#phi', 320, 3.2, 3.2, 320, 3.2, 3.2)
+ut.bookHist(h, f'{nuf}_lep_Energy', f'Energy correlation between outgoing lepton and incoming nu ;E_{nu};E_lep', 200, 0, 4000, 200, 0, 4000)
+for particle in [lep, 'hadron', 'hadron_sec']:
   for vcut in vis_cuts.values():
     ut.bookHist(h, f'{particle}_energy{vcut}', particle+' Energy;Energy [GeV]', 200, 0, 4000)
-    ut.bookHist(h, f'{particle}_TX{vcut}', particle+';TX', 2000, -1, 1)
-    ut.bookHist(h, f'{particle}_TY{vcut}', particle+';TY', 2000, -1, 1)
-    ut.bookHist(h, f'{particle}_TXTY{vcut}', particle+';TX;TY', 2000, -1, 1, 2000, -1, 1)
     ut.bookHist(h, f'{particle}_PT{vcut}', particle+';PT', 1000, 0, 100)
+  ut.bookHist(h, f'{particle}_TX', particle+';TX', 2000, -1, 1)
+  ut.bookHist(h, f'{particle}_TY', particle+';TY', 2000, -1, 1)
+  ut.bookHist(h, f'{particle}_TXTY', particle+';TX;TY', 2000, -1, 1, 2000, -1, 1)
 
 
 ###### EVENT LOOP ##############
 for i_event, event in enumerate(sTree):
-  if len(sys.argv) == 2:
-    if i_event > up_to_ev: break
-  elif len(sys.argv) == 3:
-    if i_event < from_ev: continue
-    if i_event >= to_ev: break
+  if i_event < from_evt: continue
+  if i_event >= to_evt: break
   if i_event%100 == 0: print("Sanity check, current event ", i_event)
-  
-  is_numu = False
-  is_nue = False
+  ###fix here
+  # is_numu = False
+  # is_nue = False
   nutrack = event.MCTrack[0]
   leptrack = event.MCTrack[1]
   nupdg = nutrack.GetPdgCode()
   leppdg = leptrack.GetPdgCode()
-  if abs(nupdg) == 14 and abs(leppdg) == 13: is_numu = True
-  elif abs(nupdg) == 12 and abs(leppdg) == 11: is_nue = True
-  else: continue
+  # if abs(nupdg) == 14 and abs(leppdg) == 13: is_numu = True
+  # elif abs(nupdg) == 12 and abs(leppdg) == 11: is_nue = True
+  # else: continue
 
   #Process identification
-  gst.GetEntry(i_event)
-  from_charm = gst.FLUKA_weight
-  flag = 0 
-  if is_numu:
-    nu = 'numu' 
-    particle = 'mu'
-    flag = 1
-  elif is_nue:
-    nu = 'nue'
-    particle = 'e'
-    flag = 2
-  if from_charm == 1:
-    nu = nu+'_c'
-    flag+=10
+  # gst.GetEntry(i_event)
+  # from_charm = gst.FLUKA_weight
+  # flag = 0 
+  # if is_numu:
+  #   nu = 'numu' 
+  #   particle = 'mu'
+  #   flag = 1
+  # elif is_nue:
+  #   nu = 'nue'
+  #   particle = 'e'
+  #   flag = 2
+  # if from_charm == 1:
+  #   nu = nu+'_c'
+  #   flag+=10
 
   nu_vtx = ROOT.TVector3(nutrack.GetStartX(), nutrack.GetStartY(), nutrack.GetStartZ())
   h[f'{nu}_vx_all'].Fill(nu_vtx.X())
@@ -203,6 +212,7 @@ for i_event, event in enumerate(sTree):
   h[f'{nu}_vz_all'].Fill(nu_vtx.Z())
   nu_in_brick, nu_brick_int = getBrickInt(nu_vtx, brickRanges)
   nu_wall_int, nu_brick_int = decodeBrick(nu_brick_int)
+  if nu_brick_int != 11: continue
   if not nu_in_brick: # excluding neutrinos not interacting in the target
     h[f'{nu}_lost'].Fill(0)
     print("Vtx not in brick", nu_vtx.X(), nu_vtx.Y(), nu_vtx.Z())
@@ -217,27 +227,27 @@ for i_event, event in enumerate(sTree):
   nu_energy = nutrack.GetEnergy()
   lep_energy = leptrack.GetEnergy()
   lep_theta = ROOT.TMath.Sqrt(lep_angle.X()**2 + lep_angle.Y()**2)
-  h[f'{nu}_energy'].Fill(nu_energy)
-  h[f'{nu}_TX'].Fill(nu_angle.X())
-  h[f'{nu}_TY'].Fill(nu_angle.Y())
-  h[f'{nu}_TXTY'].Fill(nu_angle.X(), nu_angle.Y())
-  h[f'{nu}_vx'].Fill(nu_vtx.X())
-  h[f'{nu}_vy'].Fill(nu_vtx.Y())
-  h[f'{nu}_vz'].Fill(nu_vtx.Z())
-  h[f'{nu}_vxy'].Fill(nu_vtx.X(), nu_vtx.Y())
-  h[f'{nu}_vxz'].Fill(nu_vtx.Z(), nu_vtx.X())
-  h[f'{nu}_vyz'].Fill(nu_vtx.Z(), nu_vtx.Y())
-  h[f'{nu}_scatt_ang'].Fill(scatt_angle, scatt_phi)
-  h[f'{nu}_lep_Energy'].Fill(nu_energy, lep_energy)
-  h[f'{nu}_vtx_wall'].Fill(nu_wall_int)
-  h[f'{nu}_vtx_brick'].Fill(nu_brick_int)
+  h[f'{nuf}_energy'].Fill(nu_energy)
+  h[f'{nuf}_TX'].Fill(nu_angle.X())
+  h[f'{nuf}_TY'].Fill(nu_angle.Y())
+  h[f'{nuf}_TXTY'].Fill(nu_angle.X(), nu_angle.Y())
+  h[f'{nuf}_vx'].Fill(nu_vtx.X())
+  h[f'{nuf}_vy'].Fill(nu_vtx.Y())
+  h[f'{nuf}_vz'].Fill(nu_vtx.Z())
+  h[f'{nuf}_vxy'].Fill(nu_vtx.X(), nu_vtx.Y())
+  h[f'{nuf}_vxz'].Fill(nu_vtx.Z(), nu_vtx.X())
+  h[f'{nuf}_vyz'].Fill(nu_vtx.Z(), nu_vtx.Y())
+  h[f'{nuf}_scatt_ang'].Fill(scatt_angle, scatt_phi)
+  h[f'{nuf}_lep_Energy'].Fill(nu_energy, lep_energy)
+  h[f'{nuf}_vtx_wall'].Fill(nu_wall_int)
+  h[f'{nuf}_vtx_brick'].Fill(nu_brick_int)
+  h[f'{lep}_TX'].Fill(lep_angle.X())
+  h[f'{lep}_TY'].Fill(lep_angle.Y())
+  h[f'{lep}_TXTY'].Fill(lep_angle.X(), lep_angle.Y())
   for ecut, vcut in vis_cuts.items():
     if ecut and (lep_theta>1 or lep_energy < ecut/1e3): continue
-    h[f'{particle}_energy{vcut}'].Fill(lep_energy)
-    h[f'{particle}_TX{vcut}'].Fill(lep_angle.X())
-    h[f'{particle}_TY{vcut}'].Fill(lep_angle.Y())
-    h[f'{particle}_TXTY{vcut}'].Fill(lep_angle.X(), lep_angle.Y())
-    h[f'{particle}_PT{vcut}'].Fill(lep_pt)
+    h[f'{lep}_energy{vcut}'].Fill(lep_energy)
+    h[f'{lep}_PT{vcut}'].Fill(lep_pt)
   
   n_prong = {0:0, 1:0, 200:0, 500:0, 1000:0}
   n_neu_vtx = 0
@@ -254,15 +264,15 @@ for i_event, event in enumerate(sTree):
     ty = track.GetPy()/track.GetPz()
     pt = track.GetPt()
     theta = ROOT.TMath.Sqrt(tx**2 + ty**2)
-    for ecut, vcut in vis_cuts.items():
-      if ecut and (theta>1 or Energy < ecut/1e3): continue
-      if MotherID == 0 and charge != 0:
+    if MotherID == 0 and charge != 0:
+      h[f'hadron_TX'].Fill(tx)
+      h[f'hadron_TY'].Fill(ty)
+      h[f'hadron_TXTY'].Fill(tx, ty)
+      for ecut, vcut in vis_cuts.items():
+        if ecut and (theta>1 or Energy < ecut/1e3): continue
         n_prong[ecut] += 1
         if i_track == 1: continue #skip lepton
         h[f'hadron_energy{vcut}'].Fill(Energy)
-        h[f'hadron_TX{vcut}'].Fill(tx)
-        h[f'hadron_TY{vcut}'].Fill(ty)
-        h[f'hadron_TXTY{vcut}'].Fill(tx, ty)
         h[f'hadron_PT{vcut}'].Fill(pt)
     if charge == 0:
       n_prong_sec = {0:0, 1:0, 200:0, 500:0, 1000:0}
@@ -284,15 +294,15 @@ for i_event, event in enumerate(sTree):
         ty2 = track2.GetPy()/track2.GetPz()
         pt2 = track2.GetPt()
         theta2 = ROOT.TMath.Sqrt(tx2**2 + ty2**2)
+        h[f'hadron_sec_TX'].Fill(tx2)
+        h[f'hadron_sec_TY'].Fill(ty2)
+        h[f'hadron_sec_TXTY'].Fill(tx2, ty2)
         for ecut, vcut in vis_cuts.items():
           if ecut and (theta2>1 or Energy2 < ecut/1e3): continue
           h[f'hadron_sec_energy{vcut}'].Fill(Energy2)
-          h[f'hadron_sec_TX{vcut}'].Fill(tx2)
-          h[f'hadron_sec_TY{vcut}'].Fill(ty2)
-          h[f'hadron_sec_TXTY{vcut}'].Fill(tx2, ty2)
           h[f'hadron_sec_PT{vcut}'].Fill(pt2)
           n_prong_sec[ecut] +=1
-      for ecut in vis_cuts.keys():
+      for ecut, vcut in vis_cuts.items():
         if not n_prong_sec[ecut]: continue
         h[f'neu_n_prong{vcut}'].Fill(n_prong_sec[ecut])
       if not n_prong_sec[1]: continue
@@ -311,8 +321,8 @@ for i_event, event in enumerate(sTree):
       h[f'neu_vtx_brick'].Fill(neu_brick_int)
   
   for ecut, vcut in vis_cuts.items():
-    h[f'{nu}_n_prong{vcut}'].Fill(n_prong[ecut])
-  h[f'{nu}_neu_vtx'].Fill(n_neu_vtx)
+    h[f'{nuf}_n_prong{vcut}'].Fill(n_prong[ecut])
+  h[f'{nuf}_neu_vtx'].Fill(n_neu_vtx)
   ntuple.Fill(i_event, flag, nu_energy, nu_vtx.X(), nu_vtx.Y(), nu_vtx.Z(), nu_wall_int, nu_brick_int, lep_energy, lep_angle.X(), lep_angle.Y(), n_prong[0], n_neu_vtx)
 ###########################################
 print('Arrived at event', i_event-1)
@@ -322,7 +332,7 @@ ntuple.Write()
 outNtuple.Write()
 outNtuple.Close() 
 
-outFileName = outPath+'/histo_nu.'+tag+'.root'
+outFileName = outPath+f'/histo_{nuf}.{tag}.root'
 outFile = ROOT.TFile(outFileName, 'RECREATE')
 for _h in h.values():
   _h.Write()
