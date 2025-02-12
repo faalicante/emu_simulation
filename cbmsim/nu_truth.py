@@ -126,7 +126,7 @@ nue = options.nue
 from_evt = options.from_evt
 to_evt = options.to_evt
 
-outPath = '/afs/cern.ch/work/f/falicant/public/emu_simulation/out2'
+outPath = '/afs/cern.ch/work/f/falicant/public/emu_simulation/out3'
 
 if numu:
   pathSim = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc_eff10_smear0'
@@ -161,7 +161,7 @@ failedPDGs = list()
 
 
 tag = 'from_evt_'+str(from_evt)+'_to_evt_'+str(to_evt)
-outNtupleName = outPath+f'/ntuple_{nuf}_b11.{tag}.root'
+outNtupleName = outPath+f'/ntuple_{nuf}.{tag}.root'
 outNtuple = ROOT.TFile.Open(outNtupleName, 'RECREATE')
 ntuple = ROOT.TNtuple("cbmsim", "Ntuple of nu",'evID:flag:nu_E:nu_vx:nu_vy:nu_vz:nu_wall:nu_brick:lep_E:lep_tx:lep_ty:n_prong:neu_vtx')
 ntuple.SetDirectory(outNtuple)
@@ -218,14 +218,12 @@ for i_event, event in enumerate(sTree):
   h[f'{nu}_vx_all'].Fill(nu_vtx.X())
   h[f'{nu}_vy_all'].Fill(nu_vtx.Y())
   h[f'{nu}_vz_all'].Fill(nu_vtx.Z())
-  # nu_in_brick, nu_brick_int = getBrickInt(nu_vtx, brickRanges)
-  # nu_wall_int, nu_brick_int = decodeBrick(nu_brick_int)
   if nu_brick_int == None: # excluding neutrinos not interacting in the target
     h[f'{nu}_lost'].Fill(0)
     print(f"Vtx {i_event} not in brick", nu_vtx.X(), nu_vtx.Y(), nu_vtx.Z())
     print("Vtx in volume", vol_path_int)
     continue  
-  if nu_brick_int != 11: continue
+  # if nu_brick_int != 11: continue
   nu_angle = ROOT.TVector3(nutrack.GetPx()/nutrack.GetPz(), nutrack.GetPy()/nutrack.GetPz(), 1.)
   lep_angle = ROOT.TVector3(leptrack.GetPx()/(leptrack.GetPz()), leptrack.GetPy()/(leptrack.GetPz()), 1.)
   lep_pt = leptrack.GetPt()
