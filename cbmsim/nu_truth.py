@@ -4,6 +4,8 @@ from array import array
 import rootUtils as ut
 import time
 import SndlhcGeo
+import re
+
 start_time = time.time()
 ROOT.gROOT.SetBatch(ROOT.kTRUE)
 
@@ -94,12 +96,37 @@ def scattPhi(px1, py1, px2, py2):
   if scatt_phi > ROOT.TMath.Pi(): scatt_phi = 2*ROOT.TMath.Pi() - scatt_phi
   return scatt_phi
 
+def getVolInt(nu_vtx):
+  nodeInt = ROOT.gGeoManager.FindNode(nu_vtx.X(), nu_vtx.Y(), nu_vtx.Z())
+  pathInt = ROOT.gGeoManager.GetPath()
+
+  wall_path = re.search(r"/Wall_(\d+)", pathInt)
+  row_path = re.search(r"/Row_(\d+)", pathInt)
+  brick_path = re.search(r"/Brick_(\d+)", pathInt)
+
+  wall_number = int(wall_path.group(1)) if wall_path else None
+  row_number = int(row_path.group(1)) if row_path else None
+  brick_number = int(brick_path.group(1)) if brick_path else None
+  if brick_number != None: wall, brick = decodeVolInt(wall_number, row_number, brick_number)
+  else: return None, None, pathInt
+  return wall, brick, pathInt
+
+def decodeVolInt(wall_number, row_number, brick_number):
+  wall = wall_number + 1
+  column = brick_number
+  row = row_number
+  brick_map = {(0, 0): 2, (0, 1): 1, (1, 0): 4, (1, 1): 3}
+  brick = brick_map[(row, column)]
+  brick = wall*10 + brick
+  return wall, brick
+
+
 numu = options.numu
 nue = options.nue
 from_evt = options.from_evt
 to_evt = options.to_evt
 
-outPath = '/afs/cern.ch/work/f/falicant/public/emu_simulation/out4'
+outPath = '/afs/cern.ch/work/f/falicant/public/emu_simulation/out2'
 
 if numu:
   pathSim = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc_eff10_smear0'
@@ -116,7 +143,8 @@ else:
   sys.exit(1)
 
 geoFile =  pathSim + '/geofile_full.Genie-TGeant4.root'
-geo = SndlhcGeo.GeoInterface(geoFile)
+# geo = SndlhcGeo.GeoInterface(geoFile)
+ROOT.TGeoManager.Import(geoFile)
 
 simName = '/inECC_sndLHC.Genie-TGeant4.root'
 simFile = ROOT.TFile.Open(pathSim+simName)
@@ -179,46 +207,25 @@ for i_event, event in enumerate(sTree):
   if i_event < from_evt: continue
   if i_event >= to_evt: break
   if i_event%100 == 0: print("Sanity check, current event ", i_event)
-  ###fix here
-  # is_numu = False
-  # is_nue = False
+
   nutrack = event.MCTrack[0]
   leptrack = event.MCTrack[1]
   nupdg = nutrack.GetPdgCode()
   leppdg = leptrack.GetPdgCode()
-  # if abs(nupdg) == 14 and abs(leppdg) == 13: is_numu = True
-  # elif abs(nupdg) == 12 and abs(leppdg) == 11: is_nue = True
-  # else: continue
-
-  #Process identification
-  # gst.GetEntry(i_event)
-  # from_charm = gst.FLUKA_weight
-  # flag = 0 
-  # if is_numu:
-  #   nu = 'numu' 
-  #   particle = 'mu'
-  #   flag = 1
-  # elif is_nue:
-  #   nu = 'nue'
-  #   particle = 'e'
-  #   flag = 2
-  # if from_charm == 1:
-  #   nu = nu+'_c'
-  #   flag+=10
 
   nu_vtx = ROOT.TVector3(nutrack.GetStartX(), nutrack.GetStartY(), nutrack.GetStartZ())
+  nu_wall_int, nu_brick_int, vol_path_int = getVolInt(nu_vtx)
   h[f'{nu}_vx_all'].Fill(nu_vtx.X())
   h[f'{nu}_vy_all'].Fill(nu_vtx.Y())
   h[f'{nu}_vz_all'].Fill(nu_vtx.Z())
-  nu_in_brick, nu_brick_int = getBrickInt(nu_vtx, brickRanges)
-  nu_wall_int, nu_brick_int = decodeBrick(nu_brick_int)
-  if nu_brick_int != 11: continue
-  if not nu_in_brick: # excluding neutrinos not interacting in the target
+  # nu_in_brick, nu_brick_int = getBrickInt(nu_vtx, brickRanges)
+  # nu_wall_int, nu_brick_int = decodeBrick(nu_brick_int)
+  if nu_brick_int == None: # excluding neutrinos not interacting in the target
     h[f'{nu}_lost'].Fill(0)
-    print("Vtx not in brick", nu_vtx.X(), nu_vtx.Y(), nu_vtx.Z())
-    volInt = geo.sGeo.FindNode(nu_vtx.X(), nu_vtx.Y(), nu_vtx.Z()).GetMotherVolume().GetName()
-    print("Vtx in volume", volInt)
+    print(f"Vtx {i_event} not in brick", nu_vtx.X(), nu_vtx.Y(), nu_vtx.Z())
+    print("Vtx in volume", vol_path_int)
     continue  
+  if nu_brick_int != 11: continue
   nu_angle = ROOT.TVector3(nutrack.GetPx()/nutrack.GetPz(), nutrack.GetPy()/nutrack.GetPz(), 1.)
   lep_angle = ROOT.TVector3(leptrack.GetPx()/(leptrack.GetPz()), leptrack.GetPy()/(leptrack.GetPz()), 1.)
   lep_pt = leptrack.GetPt()
