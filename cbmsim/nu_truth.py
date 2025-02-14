@@ -126,7 +126,7 @@ nue = options.nue
 from_evt = options.from_evt
 to_evt = options.to_evt
 
-outPath = '/afs/cern.ch/work/f/falicant/public/emu_simulation/out3'
+outPath = '/afs/cern.ch/work/f/falicant/public/emu_simulation/out2'
 
 if numu:
   pathSim = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc_eff10_smear0'
@@ -154,7 +154,7 @@ nentries = sTree.GetEntries()
 print('There are ', nentries, 'entries')
 
 wallRanges = getWallRanges()
-brickRanges = getBrickRanges()
+# brickRanges = getBrickRanges()
 
 MyPDG = ROOT.TDatabasePDG.Instance()
 failedPDGs = list()
@@ -215,15 +215,15 @@ for i_event, event in enumerate(sTree):
 
   nu_vtx = ROOT.TVector3(nutrack.GetStartX(), nutrack.GetStartY(), nutrack.GetStartZ())
   nu_wall_int, nu_brick_int, vol_path_int = getVolInt(nu_vtx)
-  h[f'{nu}_vx_all'].Fill(nu_vtx.X())
-  h[f'{nu}_vy_all'].Fill(nu_vtx.Y())
-  h[f'{nu}_vz_all'].Fill(nu_vtx.Z())
+  if nu_brick_int != 11: continue
+  h[f'{nuf}_vx_all'].Fill(nu_vtx.X())
+  h[f'{nuf}_vy_all'].Fill(nu_vtx.Y())
+  h[f'{nuf}_vz_all'].Fill(nu_vtx.Z())
   if nu_brick_int == None: # excluding neutrinos not interacting in the target
-    h[f'{nu}_lost'].Fill(0)
+    h[f'{nuf}_lost'].Fill(0)
     print(f"Vtx {i_event} not in brick", nu_vtx.X(), nu_vtx.Y(), nu_vtx.Z())
     print("Vtx in volume", vol_path_int)
     continue  
-  # if nu_brick_int != 11: continue
   nu_angle = ROOT.TVector3(nutrack.GetPx()/nutrack.GetPz(), nutrack.GetPy()/nutrack.GetPz(), 1.)
   lep_angle = ROOT.TVector3(leptrack.GetPx()/(leptrack.GetPz()), leptrack.GetPy()/(leptrack.GetPz()), 1.)
   lep_pt = leptrack.GetPt()
@@ -285,9 +285,8 @@ for i_event, event in enumerate(sTree):
         MotherID2 = track2.GetMotherId()
         if MotherID2 != i_track: continue   #get daughter from neutral
         neu_vtx = ROOT.TVector3(track2.GetStartX(), track2.GetStartY(), track2.GetStartZ())
-        neu_in_brick, neu_brick_int = getBrickInt(neu_vtx, brickRanges)
-        neu_wall_int, neu_brick_int = decodeBrick(neu_brick_int)
-        if not neu_in_brick: break # excluding neutrals not interacting in the target
+        neu_wall_int, neu_brick_int, vol_path_int = getVolInt(nu_vtx)
+        if neu_brick_int == None: break # excluding neutrals not interacting in the target
         PdgCode2 = track2.GetPdgCode()
         if not MyPDG.GetParticle(PdgCode2):
             if PdgCode2 not in failedPDGs: failedPDGs.append(PdgCode2)
