@@ -15,7 +15,6 @@ options = parser.parse_args()
 
 numu = options.numu
 nue = options.nue
-muon = options.muon
 brickID = options.brickID
 from_plate = 60
 
