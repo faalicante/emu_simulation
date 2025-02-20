@@ -9,10 +9,16 @@ from ctypes import c_int
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("-b", dest="brickID", required=True, default=None, type=int)
+parser.add_argument("--numu", dest="numu", required=False, default=None)
+parser.add_argument("--nue", dest="nue", required=False, default=None)
+parser.add_argument("--muon", dest="muon", required=False, default=None)
 options = parser.parse_args()
 
+numu = options.numu
+nue = options.nue
+muon = options.muon
 brickID = options.brickID
-from_plate = 57
+from_plate = 60
 
 def AddToDict(dictionary, var):
     if var in dictionary:
@@ -66,10 +72,10 @@ def findVertex(vtx, nu_list):
     for ievt, nu_vtx in enumerate(nu_list):
         dist_xy = ROOT.TMath.Sqrt((nu_vtx.X()-vtx_g.X())**2 + (nu_vtx.Y()-vtx_g.Y())**2)
         dist_z = ROOT.TMath.Abs(nu_vtx.Z()-vtx_g.Z())
-        if dist_z <= max_z:
+        if dist_z < max_z:
             # max_z = dist_z
             if dist_xy < max_xy:
-                max_xy = dist_xy
+                # max_xy = dist_xy
                 closestEvent = ievt
     return closestEvent
 
@@ -77,9 +83,20 @@ def findVertex(vtx, nu_list):
 zmin = -77585.00
 # pathSim = '/eos/experiment/sndlhc/MonteCarlo/Neutrinos/Genie/nu_sim_activeemu_withcrisfiles_25_July_2022/'
 
-path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/muon1E5_eff9_smear1'
-sim_file = path+'/sndLHC.Ntuple-TGeant4-1E5cm2.root'
-out_name = f'/vertex_muon_{brickID}.root'
+if numu:
+    # path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc_eff9_smear1'
+    path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc_eff10_smear0'
+    sim_file = path+'/inECC_sndLHC.Genie-TGeant4.root'
+    out_name = f'/vertex_sigmu_dan_{brickID}.root'
+elif nue:
+    path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/nuecc_eff9_smear1'
+    # path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/nuecc_eff10_smear0'
+    sim_file = path+'/inECC_sndLHC.Genie-TGeant4.root'
+    out_name = f'/vertex_sige_{brickID}.root'
+elif muon:
+    path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/muon1E5_eff9_smear1'
+    sim_file = path+'/sndLHC.Ntuple-TGeant4-1E5cm2.root'
+    out_name = f'/vertex_muon_{brickID}.root'
 
 geoFile =  path + '/geofile_full.Genie-TGeant4.root'
 import SndlhcGeo
@@ -99,12 +116,14 @@ h_npl = ROOT.TH1D('npl', ' Number of crossing films;npl', 56, 4, 60)
 h_ff = ROOT.TH1D('ff', 'Fill Factor;FF', 22, 0, 1.05)
 h_ip = ROOT.TH1D('ip', 'Impact parameter;ip[um]', 500, 0, 50)
 h_meanff = ROOT.TH1D('meanff', 'Mean Fill Factor;FF', 22, 0, 1.05)
-h_meanip = ROOT.TH1D('meanip', 'Mean impact parameter;ip[um]', 50, 0, 500)
+h_meanip = ROOT.TH1D('meanip', 'Mean impact parameter;ip[um]', 500, 0, 50)
 h_prob = ROOT.TH1D('prob', 'Probability;prob', 30, 0, 1.02)
 h_maxape = ROOT.TH1D('maxape', 'Max aperture;max_ape', 50, 0, 2.5)
 h_meanape = ROOT.TH1D('meanape', 'Mean aperture;mean_ape', 50, 0, 2.5)
 h_meanphi = ROOT.TH1D('meanphi', 'Mean phi;mean_phi', 80, -4, 4)
 h_maxdphi = ROOT.TH1D('maxdphi', 'Max phi diff;max_dphi', 40, 0, 4)
+h_offset_xy = ROOT.TH2D('offset_xy', 'True neutrino vs vtx;x;y', 200, -0.001, 0.001, 200, -0.001, 0.001)
+h_offset_z = ROOT.TH1D('offset_z', 'True neutrino vs vtx;z', 2000, -0.1, 0.1)
 
 emureader = ROOT.EmulsionDet()
 
@@ -125,6 +144,9 @@ _flag = array('i', [0])
 _vx = array('f', [0])
 _vy = array('f', [0])
 _vz = array('f', [0])
+_vx_g = array('f', [0])
+_vy_g = array('f', [0])
+_vz_g = array('f', [0])
 _ntrks = array('i', [0])
 _nseg = array('i', N*[0])
 _npl = array('i', N*[0])
@@ -147,10 +169,15 @@ _trPDG = array('f', [0])
 _motherdPhi = array('f', [0])
 _signal = array('i', [0])
 _weight = array('f', [0])
+_f_trk = array('i', [0])
+_clEvt = array('i', [0])
 
 outputTree.Branch("brickID", _brickID, "brickID/I")
 outputTree.Branch("vID", _vID, "vID/I")
 outputTree.Branch("flag", _flag, "flag/I")
+outputTree.Branch("vx_g", _vx_g, "vx_g/F")
+outputTree.Branch("vy_g", _vy_g, "vy_g/F")
+outputTree.Branch("vz_g", _vz_g, "vz_g/F")
 outputTree.Branch("vx", _vx, "vx/F")
 outputTree.Branch("vy", _vy, "vy/F")
 outputTree.Branch("vz", _vz, "vz/F")
@@ -176,6 +203,8 @@ outputTree.Branch("trPDG", _trPDG, "trPDG/F")
 outputTree.Branch("motherdPhi", _motherdPhi, "motherdPhi/F")
 outputTree.Branch("signal", _signal, "signal/I")
 outputTree.Branch("weight", _weight, "weight/F")
+outputTree.Branch("f_trk", _f_trk, "f_trk/I")
+outputTree.Branch("clEvt", _clEvt, "clEvt/I")
 
 print("opening file: ",vtx_file)
 dproc = ROOT.EdbDataProc()
@@ -198,14 +227,19 @@ vertices = gAli.eVTX
 
 fsim = ROOT.TFile.Open(sim_file)
 cbmsim = fsim.cbmsim
+nu_list = prepareList(cbmsim)
 
-# norm = 8e8/2e8
-# wLum = 1e5
-# wLHC = muontrack.GetWeight()*wLum*norm
+fake_vtx=0
+miss_lep=0
+miss_id=0
+miss_evt=0
+miss_evt2=0
+miss_evt_close=0
+miss_mother=0
+miss_pdg=0
 
 ### VERTICES LOOP ###
 for ivtx, vtx in enumerate(vertices):
-    # trackIDs = []
     ntrks = vtx.N()
     nu_vtx=0
     lep_found=0
@@ -217,12 +251,17 @@ for ivtx, vtx in enumerate(vertices):
     ntrks = vtx.N()
     h_vz.Fill(vz)
     h_vxy.Fill(vx, vy)
-    h_flag.Fill(flag)
     if vz < zmin or vz > 0: continue
     if vx < 0 or vx > 200000: continue
     if vy < 0 or vy > 200000: continue
+    h_flag.Fill(flag)
     if flag !=0 and flag !=3: continue
     # print(f"Vertex {ivtx}")
+    closestEvent = findVertex(vtx, nu_list)
+    if closestEvent == None:
+        # fake_vtx+=1
+        continue
+    h_n.Fill(ntrks)
     # if ntrks < 3: continue
 
     apeList = []
@@ -262,9 +301,35 @@ for ivtx, vtx in enumerate(vertices):
         trackPDG = max(DictSegPDG, key=DictSegPDG.get)
         trackEvt = max(DictSegEvt, key=DictSegEvt.get)
         trackID = max(DictSegID, key=DictSegID.get)
-        # trackIDs.append(trackID)
         trackMother = max(DictSegMother, key=DictSegMother.get)
 
+        # DictCheckID[trackID] = track.MCTrack()
+        # DictCheckID2[trackID] = track.GetSegmentsMCTrack(nseg_int)
+        # DictCheckEvt[trackEvt] = track.MCEvt()
+        # DictCheckMother[trackMother] = track.Aid(0)
+        # DictCheckPdg[trackPDG] = track.GetSegment(0).Vid(0)
+        # track_out = vtx.GetVTa(itrack).Zpos()
+        if trackMother == 0:
+            if trackID != track.MCTrack():
+                print("id", vtx.ID(), trackID, track.MCTrack())
+                miss_id+=1
+            if trackEvt != track.MCEvt():
+                print("evt", vtx.ID(), trackID, track.MCTrack())
+                miss_evt+=1
+            if trackMother != track.Aid(0):
+                print("mot", vtx.ID(), trackID, track.MCTrack())
+                miss_mother+=1
+            if trackPDG != track.GetSegment(0).Vid(0):
+                print("pdg", vtx.ID(), trackID, track.MCTrack())
+                miss_pdg+=1
+            nu_vtx += 1
+            if numu and abs(trackPDG) == 13:
+                lep_found = True
+            if nue and abs(trackPDG) == 11:
+                lep_found = True
+        #     # nu_vtx += 1
+        #     elif nue and abs(track.GetSegment(0).Vid(0)) == 11:
+        #         nu_vtx = True
         npl = track.Npl()
         impact_parameter = vtx.GetVTa(itrack).Imp()
         h_ip.Fill(impact_parameter)         
@@ -272,11 +337,10 @@ for ivtx, vtx in enumerate(vertices):
         nfirst = track.GetSegmentFirst().Plate()
         nava = from_plate - nfirst + 1
         FF = float(nseg)/float(nava)
-        phi = track.Phi()
         ffList.append(FF)
         TXList.append(track.TX())
         TYList.append(track.TY())
-        phiList.append(phi)
+        phiList.append(track.Phi())
         h_nseg.Fill(nseg)
         h_npl.Fill(npl)
         h_ff.Fill(FF)
@@ -297,20 +361,49 @@ for ivtx, vtx in enumerate(vertices):
             ty= track.TY() - t2.TY()
             apeList.append(ROOT.TMath.Sqrt( tx*tx+ty*ty ))
 
-    eventID = max(DictTrackEvt, key=DictTrackEvt.get)
+    # miss_id += checkDict(DictCheckID)
+    # miss_id2 += checkDict(DictCheckID2)
+    # miss_evt += checkDict(DictCheckEvt)
+    # miss_mother += checkDict(DictCheckMother)
+    # miss_pdg += checkDict(DictCheckPdg)
 
+    # if nu_vtx<0.5*ntrks: 
+    if (numu or nue) and nu_vtx<0.5*ntrks:
+        print("no mother id ",  vtx.ID())
+        fake_vtx+=1
+        continue
+    if not lep_found:
+        print("no lep" , vtx.ID())
+        miss_lep+=1
+    fake_tracks = ntrks - nu_vtx
+    _f_trk[0] = fake_tracks
+    eventID = max(DictTrackEvt, key=DictTrackEvt.get)
+    if eventID != closestEvent:
+        print("cl ev", vtx.ID(), eventID, closestEvent)
+        miss_evt_close +=1
+    # DictCheckEvtClose[eventID] = closestEvent
+    # miss_evt_close += checkDict(DictCheckEvtClose)
     cbmsim.GetEntry(eventID)
-    # wMuon = cbmsim.MCTrack[0].GetWeight()
-    # tWeights = [cbmsim.MCTrack[i].GetWeight() for i in trackIDs]
-    w = 253
-    h_n.Fill(ntrks, w)
-    h_n0.Fill(ntrks, w)
-    h_prob.Fill(vtx.V().prob(), w)
-    h_maxape.Fill(vtx.MaxAperture(), w)
-    h_meanff.Fill(np.mean(ffList), w)
-    h_meanip.Fill(np.mean(ipList), w)
-    h_meanape.Fill(np.mean(apeList), w)
-    h_meanphi.Fill(np.mean(phiList), w)
+    # eventID = cbmsim.MCEventHeader.GetEventID()
+    w = cbmsim.MCTrack[0].GetWeight()
+    h_n0.Fill(ntrks)
+    h_prob.Fill(vtx.V().prob())
+    h_maxape.Fill(vtx.MaxAperture())
+    h_meanff.Fill(np.mean(ffList))
+    h_meanip.Fill(np.mean(ipList))
+    h_meanape.Fill(np.mean(apeList))
+    h_meanphi.Fill(np.mean(phiList))
+
+    nx = cbmsim.MCTrack[0].GetStartX()
+    ny = cbmsim.MCTrack[0].GetStartY()
+    nz = cbmsim.MCTrack[0].GetStartZ()
+
+    vtx_g = convertVertex(vtx, brickID)
+    vx_g = vtx_g[0]
+    vy_g = vtx_g[1]
+    vz_g = vtx_g[2]
+    h_offset_xy.Fill(nx-vx_g, ny-vy_g)
+    h_offset_z.Fill(nz-vz_g)
 
     dPhiList = evalDiffPhi(vtx, phiList, TXList, TYList)
     track_maxdphi = max(dPhiList, key=dPhiList.get)
@@ -320,6 +413,7 @@ for ivtx, vtx in enumerate(vertices):
     _brickID[0] = brickID
     _trPDG[0] = DictTrackPdg[track_maxdphi]
     _MCEvt[0] = eventID
+    _clEvt[0] = closestEvent
     if track_maxdphi < len(cbmsim.MCTrack):
         motherID = cbmsim.MCTrack[track_maxdphi].GetMotherId()
         _motherdPhi[0] = motherID
@@ -329,6 +423,9 @@ for ivtx, vtx in enumerate(vertices):
     _vx[0]=vx
     _vy[0]=vy
     _vz[0]=vz
+    _vx_g[0]=vx_g
+    _vy_g[0]=vy_g
+    _vz_g[0]=vz_g
     _flag[0]=flag
     _vID[0] = vtx.ID()
     _ntrks[0] = ntrks
@@ -339,7 +436,7 @@ for ivtx, vtx in enumerate(vertices):
     _maxdphi[0] = maxdphi
     _meanphi[0] = np.mean(phiList)
     _meanaperture[0] = np.mean(apeList)
-    _signal[0] = 0
+    _signal[0] = 1
     _weight[0] = w
     outputTree.Fill()
     
@@ -351,7 +448,7 @@ outputFile.cd()
 outputTree.Write()
 outputFile.Close()
 
-histoFile = ROOT.TFile(out_dir+"/hist_out_{}.root".format(brickID), "RECREATE")
+histoFile = ROOT.TFile(out_dir+"/hist_out_dan_{}.root".format(brickID), "RECREATE")
 h_n.Write()
 h_flag.Write()
 h_vxy.Write()
@@ -368,8 +465,17 @@ h_maxape.Write()
 h_meanape.Write()
 h_maxdphi.Write()
 h_meanphi.Write()
+h_offset_xy.Write()
+h_offset_z.Write()
 histoFile.Write()
 histoFile.Close()
 
+print(f"fake vertices: {fake_vtx}")
+print(f"missing lepton: {miss_lep}")
+print("Missing track ID: ", miss_id)
+print("Missing track Mother: ", miss_mother)
+print("Missing track PDG: ", miss_pdg)
+print("Missing track Evt: ", miss_evt)
+print("Missing track Evt Close: ", miss_evt_close)
 elapsed_time = time() - start_time
 print("TOTAL ELAPSED TIME ", elapsed_time)
