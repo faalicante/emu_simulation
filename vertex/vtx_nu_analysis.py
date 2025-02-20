@@ -11,7 +11,6 @@ parser = ArgumentParser()
 parser.add_argument("-b", dest="brickID", required=True, default=None, type=int)
 parser.add_argument("--numu", dest="numu", required=False, default=None)
 parser.add_argument("--nue", dest="nue", required=False, default=None)
-parser.add_argument("--muon", dest="muon", required=False, default=None)
 options = parser.parse_args()
 
 numu = options.numu
@@ -75,7 +74,7 @@ def findVertex(vtx, nu_list):
         if dist_z < max_z:
             # max_z = dist_z
             if dist_xy < max_xy:
-                # max_xy = dist_xy
+                max_xy = dist_xy
                 closestEvent = ievt
     return closestEvent
 
@@ -84,19 +83,15 @@ zmin = -77585.00
 # pathSim = '/eos/experiment/sndlhc/MonteCarlo/Neutrinos/Genie/nu_sim_activeemu_withcrisfiles_25_July_2022/'
 
 if numu:
-    # path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc_eff9_smear1'
-    path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc_eff10_smear0'
+    path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc_eff9_smear1'
+    # path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc_eff10_smear0'
     sim_file = path+'/inECC_sndLHC.Genie-TGeant4.root'
-    out_name = f'/vertex_sigmu_dan_{brickID}.root'
+    out_name = f'/vertex_sigmu_{brickID}.root'
 elif nue:
     path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/nuecc_eff9_smear1'
     # path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/nuecc_eff10_smear0'
     sim_file = path+'/inECC_sndLHC.Genie-TGeant4.root'
     out_name = f'/vertex_sige_{brickID}.root'
-elif muon:
-    path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/muon1E5_eff9_smear1'
-    sim_file = path+'/sndLHC.Ntuple-TGeant4-1E5cm2.root'
-    out_name = f'/vertex_muon_{brickID}.root'
 
 geoFile =  path + '/geofile_full.Genie-TGeant4.root'
 import SndlhcGeo
@@ -448,7 +443,7 @@ outputFile.cd()
 outputTree.Write()
 outputFile.Close()
 
-histoFile = ROOT.TFile(out_dir+"/hist_out_dan_{}.root".format(brickID), "RECREATE")
+histoFile = ROOT.TFile(out_dir+"/hist_out_{}.root".format(brickID), "RECREATE")
 h_n.Write()
 h_flag.Write()
 h_vxy.Write()
