@@ -71,7 +71,6 @@ def findVertex(vtx, nu_list):
         dist_xy = ROOT.TMath.Sqrt((nu_vtx.X()-vtx_g.X())**2 + (nu_vtx.Y()-vtx_g.Y())**2)
         dist_z = ROOT.TMath.Abs(nu_vtx.Z()-vtx_g.Z())
         if dist_z < max_z:
-            # max_z = dist_z
             if dist_xy < max_xy:
                 max_xy = dist_xy
                 closestEvent = ievt
@@ -100,22 +99,22 @@ out_dir = path
 vtx_file = path+'/b{:06d}/b{:06d}.0.0.0.vtx.root'.format(brickID, brickID)
 
 #histo setup
-h_n = ROOT.TH1D('n','Multiplicity;multiplicity', 50, 0, 50)
+h_n = ROOT.TH1D('n','Multiplicity;multiplicity', 30, 0, 30)
 h_flag = ROOT.TH1D('flag','Flag;flag', 6, 0, 6)
 h_vz = ROOT.TH1D('vz','Vertex z position;vz[um]', 400, -80000, 5000)
 h_vxy = ROOT.TH2D('vxy', 'Vertex xy map;vx[um];vy[um]', 200, 0, 200000, 200, 0, 200000)
-h_n0 = ROOT.TH1D('n0', 'Multiplicity;multiplicity', 50, 0, 50)
+h_n0 = ROOT.TH1D('n0', 'Multiplicity;multiplicity', 27, 3, 30)
 h_nseg = ROOT.TH1D('nseg', 'Number of segments;nseg', 56, 4, 60)
 h_npl = ROOT.TH1D('npl', ' Number of crossing films;npl', 56, 4, 60)
-h_ff = ROOT.TH1D('ff', 'Fill Factor;FF', 22, 0, 1.05)
-h_ip = ROOT.TH1D('ip', 'Impact parameter;ip[um]', 500, 0, 50)
+h_ff = ROOT.TH1D('ff', 'Fill Factor;FF', 55, 0, 1.1)
+h_ip = ROOT.TH1D('ip', 'Impact parameter;ip[um]', 100, 0, 20)
 h_meanff = ROOT.TH1D('meanff', 'Mean Fill Factor;FF', 22, 0, 1.05)
-h_meanip = ROOT.TH1D('meanip', 'Mean impact parameter;ip[um]', 500, 0, 50)
-h_prob = ROOT.TH1D('prob', 'Probability;prob', 30, 0, 1.02)
-h_maxape = ROOT.TH1D('maxape', 'Max aperture;max_ape', 50, 0, 2.5)
-h_meanape = ROOT.TH1D('meanape', 'Mean aperture;mean_ape', 50, 0, 2.5)
-h_meanphi = ROOT.TH1D('meanphi', 'Mean phi;mean_phi', 80, -4, 4)
-h_maxdphi = ROOT.TH1D('maxdphi', 'Max phi diff;max_dphi', 40, 0, 4)
+h_meanip = ROOT.TH1D('meanip', 'Mean impact parameter;ip[um]', 100, 0, 20)
+h_prob = ROOT.TH1D('prob', 'Probability;prob', 55, 0, 1.1)
+h_maxape = ROOT.TH1D('maxape', 'Max aperture;max_ape', 100, 0, 1)
+h_meanape = ROOT.TH1D('meanape', 'Mean aperture;mean_ape', 100, 0, 1)
+h_meanphi = ROOT.TH1D('meanphi', 'Mean phi;mean_phi', 160, -4, 4)
+h_maxdphi = ROOT.TH1D('maxdphi', 'Max phi diff;max_dphi', 80, 0, 4)
 h_offset_xy = ROOT.TH2D('offset_xy', 'True neutrino vs vtx;x;y', 200, -0.001, 0.001, 200, -0.001, 0.001)
 h_offset_z = ROOT.TH1D('offset_z', 'True neutrino vs vtx;z', 2000, -0.1, 0.1)
 
@@ -244,19 +243,19 @@ for ivtx, vtx in enumerate(vertices):
     flag = vtx.Flag()
     ntrks = vtx.N()
     h_vz.Fill(vz)
-    h_vxy.Fill(vx, vy)
     if vz < zmin or vz > 0: continue
-    if vx < 0 or vx > 200000: continue
-    if vy < 0 or vy > 200000: continue
+    h_vxy.Fill(vx, vy)
+    if vx < 0 or vx > 195000: continue
+    if vy < 0 or vy > 195000: continue
     h_flag.Fill(flag)
     if flag !=0 and flag !=3: continue
     # print(f"Vertex {ivtx}")
+    h_n.Fill(ntrks)
+    if ntrks < 3: continue
     closestEvent = findVertex(vtx, nu_list)
     if closestEvent == None:
         # fake_vtx+=1
         continue
-    h_n.Fill(ntrks)
-    # if ntrks < 3: continue
 
     apeList = []
     phiList = []
@@ -297,11 +296,6 @@ for ivtx, vtx in enumerate(vertices):
         trackID = max(DictSegID, key=DictSegID.get)
         trackMother = max(DictSegMother, key=DictSegMother.get)
 
-        # DictCheckID[trackID] = track.MCTrack()
-        # DictCheckID2[trackID] = track.GetSegmentsMCTrack(nseg_int)
-        # DictCheckEvt[trackEvt] = track.MCEvt()
-        # DictCheckMother[trackMother] = track.Aid(0)
-        # DictCheckPdg[trackPDG] = track.GetSegment(0).Vid(0)
         # track_out = vtx.GetVTa(itrack).Zpos()
         if trackMother == 0:
             if trackID != track.MCTrack():
@@ -317,13 +311,10 @@ for ivtx, vtx in enumerate(vertices):
                 print("pdg", vtx.ID(), trackID, track.MCTrack())
                 miss_pdg+=1
             nu_vtx += 1
-            if numu and abs(trackPDG) == 13:
+            if numu and abs(trackPDG) == 13: #try mctrack==1
                 lep_found = True
             if nue and abs(trackPDG) == 11:
                 lep_found = True
-        #     # nu_vtx += 1
-        #     elif nue and abs(track.GetSegment(0).Vid(0)) == 11:
-        #         nu_vtx = True
         npl = track.Npl()
         impact_parameter = vtx.GetVTa(itrack).Imp()
         h_ip.Fill(impact_parameter)         
@@ -355,14 +346,7 @@ for ivtx, vtx in enumerate(vertices):
             ty= track.TY() - t2.TY()
             apeList.append(ROOT.TMath.Sqrt( tx*tx+ty*ty ))
 
-    # miss_id += checkDict(DictCheckID)
-    # miss_id2 += checkDict(DictCheckID2)
-    # miss_evt += checkDict(DictCheckEvt)
-    # miss_mother += checkDict(DictCheckMother)
-    # miss_pdg += checkDict(DictCheckPdg)
-
-    # if nu_vtx<0.5*ntrks: 
-    if (numu or nue) and nu_vtx<0.5*ntrks:
+    if nu_vtx<0.5*ntrks:
         print("no mother id ",  vtx.ID())
         fake_vtx+=1
         continue
@@ -375,10 +359,7 @@ for ivtx, vtx in enumerate(vertices):
     if eventID != closestEvent:
         print("cl ev", vtx.ID(), eventID, closestEvent)
         miss_evt_close +=1
-    # DictCheckEvtClose[eventID] = closestEvent
-    # miss_evt_close += checkDict(DictCheckEvtClose)
     cbmsim.GetEntry(eventID)
-    # eventID = cbmsim.MCEventHeader.GetEventID()
     w = cbmsim.MCTrack[0].GetWeight()
     h_n0.Fill(ntrks)
     h_prob.Fill(vtx.V().prob())
@@ -431,6 +412,7 @@ for ivtx, vtx in enumerate(vertices):
     _meanphi[0] = np.mean(phiList)
     _meanaperture[0] = np.mean(apeList)
     _signal[0] = 1
+    w=1
     _weight[0] = w
     outputTree.Fill()
     

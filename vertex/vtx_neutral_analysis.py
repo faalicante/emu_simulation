@@ -65,7 +65,6 @@ def findVertex(vtx, nu_list):
         dist_xy = ROOT.TMath.Sqrt((nu_vtx.X()-vtx_g.X())**2 + (nu_vtx.Y()-vtx_g.Y())**2)
         dist_z = ROOT.TMath.Abs(nu_vtx.Z()-vtx_g.Z())
         if dist_z <= max_z:
-            # max_z = dist_z
             if dist_xy < max_xy:
                 max_xy = dist_xy
                 closestEvent = ievt
@@ -81,7 +80,7 @@ part = ['K_10_50', 'K_50_100', 'K_100_200', 'neu_10_50', 'neu_50_100', 'neu_100_
 events_b21 = [181, 206, 203, 195, 189, 214]
 expected_b21 = [42.840602, 5.7650435, 2.4583636, 24.623528, 2.1840258, 0.40455220]
 lumi = 9.512
-fid_area = 0.68630642
+fid_area = 0.6917317708
 w = expected_b21[npart]*lumi*fid_area/events_b21[npart]
 
 from_plate = 60
@@ -117,22 +116,22 @@ vtx_file = path+'/b{:06d}/b{:06d}.0.0.0.vtx.root'.format(brickID, brickID)
 
 
 #histo setup
-h_n = ROOT.TH1D('n','Multiplicity;multiplicity', 50, 0, 50)
+h_n = ROOT.TH1D('n','Multiplicity;multiplicity', 30, 0, 30)
 h_flag = ROOT.TH1D('flag','Flag;flag', 6, 0, 6)
 h_vz = ROOT.TH1D('vz','Vertex z position;vz[um]', 400, -80000, 5000)
 h_vxy = ROOT.TH2D('vxy', 'Vertex xy map;vx[um];vy[um]', 200, 0, 200000, 200, 0, 200000)
-h_n0 = ROOT.TH1D('n0', 'Multiplicity;multiplicity', 50, 0, 50)
+h_n0 = ROOT.TH1D('n0', 'Multiplicity;multiplicity', 27, 3, 30)
 h_nseg = ROOT.TH1D('nseg', 'Number of segments;nseg', 56, 4, 60)
 h_npl = ROOT.TH1D('npl', ' Number of crossing films;npl', 56, 4, 60)
-h_ff = ROOT.TH1D('ff', 'Fill Factor;FF', 22, 0, 1.05)
-h_ip = ROOT.TH1D('ip', 'Impact parameter;ip[um]', 500, 0, 50)
+h_ff = ROOT.TH1D('ff', 'Fill Factor;FF', 55, 0, 1.1)
+h_ip = ROOT.TH1D('ip', 'Impact parameter;ip[um]', 100, 0, 20)
 h_meanff = ROOT.TH1D('meanff', 'Mean Fill Factor;FF', 22, 0, 1.05)
-h_meanip = ROOT.TH1D('meanip', 'Mean impact parameter;ip[um]', 500, 0, 50)
-h_prob = ROOT.TH1D('prob', 'Probability;prob', 30, 0, 1.02)
-h_maxape = ROOT.TH1D('maxape', 'Max aperture;max_ape', 50, 0, 2.5)
-h_meanape = ROOT.TH1D('meanape', 'Mean aperture;mean_ape', 50, 0, 2.5)
-h_meanphi = ROOT.TH1D('meanphi', 'Mean phi;mean_phi', 80, -4, 4)
-h_maxdphi = ROOT.TH1D('maxdphi', 'Max phi diff;max_dphi', 40, 0, 4)
+h_meanip = ROOT.TH1D('meanip', 'Mean impact parameter;ip[um]', 100, 0, 20)
+h_prob = ROOT.TH1D('prob', 'Probability;prob', 55, 0, 1.1)
+h_maxape = ROOT.TH1D('maxape', 'Max aperture;max_ape', 100, 0, 1)
+h_meanape = ROOT.TH1D('meanape', 'Mean aperture;mean_ape', 100, 0, 1)
+h_meanphi = ROOT.TH1D('meanphi', 'Mean phi;mean_phi', 160, -4, 4)
+h_maxdphi = ROOT.TH1D('maxdphi', 'Max phi diff;max_dphi', 80, 0, 4)
 h_offset_xy = ROOT.TH2D('offset_xy', 'True neutrino vs vtx;x;y', 200, -0.001, 0.001, 200, -0.001, 0.001)
 h_offset_z = ROOT.TH1D('offset_z', 'True neutrino vs vtx;z', 2000, -0.1, 0.1)
 
@@ -243,14 +242,15 @@ for ivtx, vtx in enumerate(vertices):
     flag = vtx.Flag()
     ntrks = vtx.N()
     h_vxy.Fill(vx, vy)
-    if vx < 0 or vx > 200000: continue
-    if vy < 0 or vy > 200000: continue
+    if vx < 0 or vx > 195000: continue
+    if vy < 0 or vy > 195000: continue
     h_vz.Fill(vz)
     if vz < zmin or vz > 0: continue
     h_flag.Fill(flag)
     if flag !=0 and flag !=3: continue
     # print(f"Vertex {ivtx}")
-    # if ntrks < 3: continue
+    h_n.Fill(ntrks, w)
+    if ntrks < 3: continue
     closestEvent = findVertex(vtx, neu_list)
     if closestEvent == None:
         print("no closest event found")
@@ -334,7 +334,6 @@ for ivtx, vtx in enumerate(vertices):
 
     eventID = max(DictTrackEvt, key=DictTrackEvt.get)
 
-    h_n.Fill(ntrks, w)
     h_n0.Fill(ntrks, w)
     h_prob.Fill(vtx.V().prob(), w)
     h_maxape.Fill(vtx.MaxAperture(), w)

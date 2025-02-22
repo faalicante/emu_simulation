@@ -74,7 +74,7 @@ def findVertex(vtx, nu_list):
     return closestEvent
 
 
-zmin = -77585.00
+zmin = -75600.00
 # pathSim = '/eos/experiment/sndlhc/MonteCarlo/Neutrinos/Genie/nu_sim_activeemu_withcrisfiles_25_July_2022/'
 
 path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/muon1E5_eff9_smear1'
@@ -89,22 +89,22 @@ out_dir = path
 vtx_file = path+'/b{:06d}/b{:06d}.0.0.0.vtx.root'.format(brickID, brickID)
 
 #histo setup
-h_n = ROOT.TH1D('n','Multiplicity;multiplicity', 50, 0, 50)
+h_n = ROOT.TH1D('n','Multiplicity;multiplicity', 30, 0, 30)
 h_flag = ROOT.TH1D('flag','Flag;flag', 6, 0, 6)
 h_vz = ROOT.TH1D('vz','Vertex z position;vz[um]', 400, -80000, 5000)
 h_vxy = ROOT.TH2D('vxy', 'Vertex xy map;vx[um];vy[um]', 200, 0, 200000, 200, 0, 200000)
-h_n0 = ROOT.TH1D('n0', 'Multiplicity;multiplicity', 50, 0, 50)
+h_n0 = ROOT.TH1D('n0', 'Multiplicity;multiplicity', 27, 3, 30)
 h_nseg = ROOT.TH1D('nseg', 'Number of segments;nseg', 56, 4, 60)
 h_npl = ROOT.TH1D('npl', ' Number of crossing films;npl', 56, 4, 60)
-h_ff = ROOT.TH1D('ff', 'Fill Factor;FF', 22, 0, 1.05)
-h_ip = ROOT.TH1D('ip', 'Impact parameter;ip[um]', 500, 0, 50)
+h_ff = ROOT.TH1D('ff', 'Fill Factor;FF', 55, 0, 1.1)
+h_ip = ROOT.TH1D('ip', 'Impact parameter;ip[um]', 100, 0, 20)
 h_meanff = ROOT.TH1D('meanff', 'Mean Fill Factor;FF', 22, 0, 1.05)
-h_meanip = ROOT.TH1D('meanip', 'Mean impact parameter;ip[um]', 500, 0, 50)
-h_prob = ROOT.TH1D('prob', 'Probability;prob', 30, 0, 1.02)
-h_maxape = ROOT.TH1D('maxape', 'Max aperture;max_ape', 50, 0, 2.5)
-h_meanape = ROOT.TH1D('meanape', 'Mean aperture;mean_ape', 50, 0, 2.5)
-h_meanphi = ROOT.TH1D('meanphi', 'Mean phi;mean_phi', 80, -4, 4)
-h_maxdphi = ROOT.TH1D('maxdphi', 'Max phi diff;max_dphi', 40, 0, 4)
+h_meanip = ROOT.TH1D('meanip', 'Mean impact parameter;ip[um]', 100, 0, 20)
+h_prob = ROOT.TH1D('prob', 'Probability;prob', 55, 0, 1.1)
+h_maxape = ROOT.TH1D('maxape', 'Max aperture;max_ape', 100, 0, 1)
+h_meanape = ROOT.TH1D('meanape', 'Mean aperture;mean_ape', 100, 0, 1)
+h_meanphi = ROOT.TH1D('meanphi', 'Mean phi;mean_phi', 160, -4, 4)
+h_maxdphi = ROOT.TH1D('maxdphi', 'Max phi diff;max_dphi', 80, 0, 4)
 
 emureader = ROOT.EmulsionDet()
 
@@ -202,6 +202,7 @@ cbmsim = fsim.cbmsim
 # norm = 8e8/2e8
 # wLum = 1e5
 # wLHC = muontrack.GetWeight()*wLum*norm
+w = 255
 
 ### VERTICES LOOP ###
 for ivtx, vtx in enumerate(vertices):
@@ -216,14 +217,15 @@ for ivtx, vtx in enumerate(vertices):
     flag = vtx.Flag()
     ntrks = vtx.N()
     h_vz.Fill(vz)
-    h_vxy.Fill(vx, vy)
-    h_flag.Fill(flag)
     if vz < zmin or vz > 0: continue
-    if vx < 0 or vx > 200000: continue
-    if vy < 0 or vy > 200000: continue
+    h_vxy.Fill(vx, vy)
+    if vx < 0 or vx > 195000: continue
+    if vy < 0 or vy > 195000: continue
+    h_flag.Fill(flag)
     if flag !=0 and flag !=3: continue
     # print(f"Vertex {ivtx}")
-    # if ntrks < 3: continue
+    h_n.Fill(ntrks, w)
+    if ntrks < 3: continue
 
     apeList = []
     phiList = []
@@ -302,8 +304,6 @@ for ivtx, vtx in enumerate(vertices):
     cbmsim.GetEntry(eventID)
     # wMuon = cbmsim.MCTrack[0].GetWeight()
     # tWeights = [cbmsim.MCTrack[i].GetWeight() for i in trackIDs]
-    w = 253
-    h_n.Fill(ntrks, w)
     h_n0.Fill(ntrks, w)
     h_prob.Fill(vtx.V().prob(), w)
     h_maxape.Fill(vtx.MaxAperture(), w)
@@ -315,7 +315,7 @@ for ivtx, vtx in enumerate(vertices):
     dPhiList = evalDiffPhi(vtx, phiList, TXList, TYList)
     track_maxdphi = max(dPhiList, key=dPhiList.get)
     maxdphi = dPhiList[track_maxdphi]
-    h_maxdphi.Fill(maxdphi)
+    h_maxdphi.Fill(maxdphi, w)
 
     _brickID[0] = brickID
     _trPDG[0] = DictTrackPdg[track_maxdphi]
