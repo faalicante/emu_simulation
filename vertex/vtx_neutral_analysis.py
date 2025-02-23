@@ -241,12 +241,12 @@ for ivtx, vtx in enumerate(vertices):
     vz = vtx.VZ()
     flag = vtx.Flag()
     ntrks = vtx.N()
-    h_vxy.Fill(vx, vy)
+    h_vxy.Fill(vx, vy, w)
     if vx < 0 or vx > 195000: continue
     if vy < 0 or vy > 195000: continue
-    h_vz.Fill(vz)
+    h_vz.Fill(vz, w)
     if vz < zmin or vz > 0: continue
-    h_flag.Fill(flag)
+    h_flag.Fill(flag, w)
     if flag !=0 and flag !=3: continue
     # print(f"Vertex {ivtx}")
     h_n.Fill(ntrks, w)
@@ -297,7 +297,7 @@ for ivtx, vtx in enumerate(vertices):
         if trackMother == 0: neu_vtx += 1
         npl = track.Npl()
         impact_parameter = vtx.GetVTa(itrack).Imp()
-        h_ip.Fill(impact_parameter)         
+        h_ip.Fill(impact_parameter, w)         
         ipList.append(impact_parameter)
         nfirst = track.GetSegmentFirst().Plate()
         nava = from_plate - nfirst + 1
@@ -307,9 +307,9 @@ for ivtx, vtx in enumerate(vertices):
         TXList.append(track.TX())
         TYList.append(track.TY())
         phiList.append(phi)
-        h_nseg.Fill(nseg)
-        h_npl.Fill(npl)
-        h_ff.Fill(FF)
+        h_nseg.Fill(nseg, w)
+        h_npl.Fill(npl, w)
+        h_ff.Fill(FF, w)
         _nseg[itrack] = nseg
         _npl[itrack] = npl
         _fillfact_t[itrack] = FF
@@ -356,7 +356,7 @@ for ivtx, vtx in enumerate(vertices):
     dPhiList = evalDiffPhi(vtx, phiList, TXList, TYList)
     track_maxdphi = max(dPhiList, key=dPhiList.get)
     maxdphi = dPhiList[track_maxdphi]
-    h_maxdphi.Fill(maxdphi)
+    h_maxdphi.Fill(maxdphi, w)
 
     _brickID[0] = brickID
     _npart[0] = npart
