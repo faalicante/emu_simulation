@@ -23,7 +23,7 @@ ncellmaxx= 185000
 ncellminy = 5000
 ncellmaxy= 185000
 cellsize= (ncellmaxx-ncellminx)/ncellsx
-zmin = -75247.02
+zmin = -75600.00
 
 path = '/eos/experiment/sndlhc/emulsionData/2022/emureco_Napoli/RUN1/b{:06d}/cells'.format(brickID)
 out_dir = '/afs/cern.ch/work/f/falicant/public/RUN1/b121'
@@ -34,23 +34,33 @@ ybin=((icell % ncellsy)) + 1
 # xbin=options.xcell
 # ybin=options.ycell
 
+with open(out_dir+"/vertices_of_interest.txt", "r") as file:
+    lines = file.readlines()[1:]
+
+voiid = []
+
+for line in lines:
+    values = line.split()
+    if int(values[1])!=xbin or int(values[2])!=ybin: continue
+    voiid.append(int(values[0]))
+
 #histo setup
 h_n = r.TH1D('n','Multiplicity;multiplicity', 30, 0, 30)
 h_flag = r.TH1D('flag','Flag;flag', 6, 0, 6)
 h_vz = r.TH1D('vz','Vertex z position;vz[um]', 400, -80000, 5000)
 h_vxy = r.TH2D('vxy', 'Vertex xy map;vx[um];vy[um]', ncellsx*10, ncellminx, ncellmaxx, ncellsy*10, ncellminy, ncellmaxy)
-h_n0 = r.TH1D('n0', 'Multiplicity;multiplicity', 50, 0, 50)
+h_n0 = r.TH1D('n0', 'Multiplicity;multiplicity', 27, 3, 30)
 h_nseg = r.TH1D('nseg', 'Number of segments;nseg', 56, 4, 60)
 h_npl = r.TH1D('npl', ' Number of crossing films;npl', 56, 4, 60)
-h_ff = r.TH1D('ff', 'Fill Factor;FF', 22, 0, 1.05)
-h_ip = r.TH1D('ip', 'Impact parameter;ip[um]', 500, 0, 50)
+h_ff = r.TH1D('ff', 'Fill Factor;FF', 55, 0, 1.1)
+h_ip = r.TH1D('ip', 'Impact parameter;ip[um]', 100, 0, 20)
 h_meanff = r.TH1D('meanff', 'Mean Fill Factor;FF', 22, 0, 1.05)
-h_meanip = r.TH1D('meanip', 'Mean impact parameter;ip[um]', 500, 0, 50)
-h_prob = r.TH1D('prob', 'Probability;prob', 30, 0, 1.02)
-h_maxape = r.TH1D('maxape', 'Max aperture;max_ape', 50, 0, 2.5)
-h_meanape = r.TH1D('meanape', 'Mean aperture;mean_ape', 50, 0, 2.5)
-h_meanphi = r.TH1D('meanphi', 'Mean phi;mean_phi', 80, -4, 4)
-h_maxdphi = r.TH1D('maxdphi', 'Max phi diff;max_dphi', 40, 0, 4)
+h_meanip = r.TH1D('meanip', 'Mean impact parameter;ip[um]', 100, 0, 20)
+h_prob = r.TH1D('prob', 'Probability;prob', 55, 0, 1.1)
+h_maxape = r.TH1D('maxape', 'Max aperture;max_ape', 100, 0, 1)
+h_meanape = r.TH1D('meanape', 'Mean aperture;mean_ape', 100, 0, 1)
+h_meanphi = r.TH1D('meanphi', 'Mean phi;mean_phi', 160, -4, 4)
+h_maxdphi = r.TH1D('maxdphi', 'Max phi diff;max_dphi', 80, 0, 4)
 
 N=30
 start_time = time()
@@ -133,14 +143,14 @@ print("opening file: ",vtx_file)
 dproc = r.EdbDataProc()
 gAli = dproc.PVR()
 scancond = r.EdbScanCond()
-scancond.SetSigma0(4,4,0.005,0.005) #change sigma0
-scancond.SetDegrad(4) #change angular degradation
+scancond.SetSigma0(1.5,1.5,0.0015,0.0015) #change sigma0
+scancond.SetDegrad(3) #change angular degradation
 gAli.SetScanCond(scancond)
 vertexrec = r.EdbVertexRec()
 vertexrec.SetPVRec(gAli)
 vertexrec.eDZmax=3000.
-vertexrec.eProbMin=0.0001
-vertexrec.eImpMax=15.
+vertexrec.eProbMin=0.001
+vertexrec.eImpMax=3.5
 vertexrec.eUseMom=False
 vertexrec.eUseSegPar=True
 vertexrec.eQualityMode=0
@@ -154,19 +164,19 @@ for vtx in vertices:
     vx = vtx.VX()
     vy = vtx.VY()
     h_vz.Fill(vz)
+    if vz < zmin: continue
+    if vz > 0: continue
+    h_vxy.Fill(vx, vy)
     if vx < (xbin-1)*cellsize+ncellminx: continue
     if vx >= (xbin)*cellsize+ncellminx: continue
     if vy < (ybin-1)*cellsize+ncellminy: continue
     if vy >= (ybin)*cellsize+ncellminy: continue
-    h_vxy.Fill(vx, vy)
-    if vz < zmin: continue
-    if vz > 0: continue
     flag = vtx.Flag()
     h_flag.Fill(flag)
     if flag != 0 and flag != 3: continue
     ntrks = vtx.N()
     h_n.Fill(ntrks)
-    # if ntrks < 3: continue
+    if ntrks < 3: continue
     h_n0.Fill(ntrks)
     nplList = []
     nsegList = []
@@ -242,14 +252,14 @@ for vtx in vertices:
         _dphi[itrack]=difference
     h_maxdphi.Fill(np.max(dPhiList))
 
-
-    # outputTree.Fill(icell, vtx.ID(), ntrks, np.mean(ffList), np.mean(ipList), vtx.V().prob(), vtx.MaxAperture())
     _cellx[0] = xbin
     _celly[0] = ybin
     _vx[0]=vx
     _vy[0]=vy
     _vz[0]=vz
     _vID[0] = vtx.ID()
+    if vtx.ID() in voiid: _voi[0] = 1
+    else: _voi[0] = 0
     _ntrks[0] = ntrks
     _nsegtot[0] = segidx
     _fillfact[0] = np.mean(ffList)
