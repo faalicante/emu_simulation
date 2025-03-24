@@ -81,12 +81,12 @@ zmin = -77585.00
 # pathSim = '/eos/experiment/sndlhc/MonteCarlo/Neutrinos/Genie/nu_sim_activeemu_withcrisfiles_25_July_2022/'
 
 if numu:
-    path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc_eff9_smear1'
+    path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc/numucc_eff9_smear1'
     # path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc_eff10_smear0'
     sim_file = path+'/inECC_sndLHC.Genie-TGeant4.root'
     out_name = f'/vertex_sigmu_{brickID}.root'
 elif nue:
-    path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/nuecc_eff9_smear1'
+    path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/nuecc/nuecc_eff9_smear1'
     # path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/nuecc_eff10_smear0'
     sim_file = path+'/inECC_sndLHC.Genie-TGeant4.root'
     out_name = f'/vertex_sige_{brickID}.root'
@@ -108,7 +108,7 @@ h_nseg = ROOT.TH1D('nseg', 'Number of segments;nseg', 56, 4, 60)
 h_npl = ROOT.TH1D('npl', ' Number of crossing films;npl', 56, 4, 60)
 h_ff = ROOT.TH1D('ff', 'Fill Factor;FF', 55, 0, 1.1)
 h_ip = ROOT.TH1D('ip', 'Impact parameter;ip[um]', 100, 0, 20)
-h_meanff = ROOT.TH1D('meanff', 'Mean Fill Factor;FF', 22, 0, 1.05)
+h_meanff = ROOT.TH1D('meanff', 'Mean Fill Factor;FF', 55, 0, 1.1)
 h_meanip = ROOT.TH1D('meanip', 'Mean impact parameter;ip[um]', 100, 0, 20)
 h_prob = ROOT.TH1D('prob', 'Probability;prob', 55, 0, 1.1)
 h_maxape = ROOT.TH1D('maxape', 'Max aperture;max_ape', 100, 0, 1)
@@ -119,6 +119,7 @@ h_offset_xy = ROOT.TH2D('offset_xy', 'True neutrino vs vtx;x;y', 200, -0.001, 0.
 h_offset_z = ROOT.TH1D('offset_z', 'True neutrino vs vtx;z', 2000, -0.1, 0.1)
 
 emureader = ROOT.EmulsionDet()
+mom_est = ROOT.EdbMomentumEstimator()
 
 N=40
 start_time = time()
@@ -164,6 +165,8 @@ _signal = array('i', [0])
 _weight = array('f', [0])
 _f_trk = array('i', [0])
 _clEvt = array('i', [0])
+_mom = array('f', [0])
+_mom_t = array('f', N*[0])
 
 outputTree.Branch("brickID", _brickID, "brickID/I")
 outputTree.Branch("vID", _vID, "vID/I")
@@ -198,6 +201,8 @@ outputTree.Branch("signal", _signal, "signal/I")
 outputTree.Branch("weight", _weight, "weight/F")
 outputTree.Branch("f_trk", _f_trk, "f_trk/I")
 outputTree.Branch("clEvt", _clEvt, "clEvt/I")
+outputTree.Branch("mom", _mom, "mom/F")
+outputTree.Branch("mom_t", _mom_t, "mom_t[ntrks]/F")
 
 print("opening file: ",vtx_file)
 dproc = ROOT.EdbDataProc()
@@ -233,6 +238,7 @@ miss_pdg=0
 
 ### VERTICES LOOP ###
 for ivtx, vtx in enumerate(vertices):
+    vtx_mom = 0
     ntrks = vtx.N()
     nu_vtx=0
     lep_found=0
@@ -340,11 +346,16 @@ for ivtx, vtx in enumerate(vertices):
         _tID[itrack] = trackID
         AddToDict(DictTrackEvt, trackEvt)
         DictTrackPdg[track.MCTrack()] = trackPDG
+        track_mom = mom_est.PMScoordinate(track)
+        _mom_t[itrack] = track_mom
+        if track_mom > 0 and track_mom < 1e9:
+            vtx_mom += track_mom
         for jtrack in range(itrack+1, ntrks):
             t2 = vtx.GetTrack(jtrack)
             tx= track.TX() - t2.TX()
             ty= track.TY() - t2.TY()
             apeList.append(ROOT.TMath.Sqrt( tx*tx+ty*ty ))
+
 
     if nu_vtx<0.5*ntrks:
         print("no mother id ",  vtx.ID())
@@ -414,6 +425,7 @@ for ivtx, vtx in enumerate(vertices):
     _signal[0] = 1
     w=1
     _weight[0] = w
+    _mom[0] = vtx_mom
     outputTree.Fill()
     
 fsim.Close()

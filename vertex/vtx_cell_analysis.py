@@ -25,8 +25,10 @@ ncellmaxy= 185000
 cellsize= (ncellmaxx-ncellminx)/ncellsx
 zmin = -75600.00
 
-path = '/eos/experiment/sndlhc/emulsionData/2022/emureco_Napoli/RUN1/b{:06d}/cells'.format(brickID)
-out_dir = '/afs/cern.ch/work/f/falicant/public/RUN1/b121'
+# path = '/eos/experiment/sndlhc/emulsionData/2022/emureco_Napoli/RUN1/b{:06d}/cells'.format(brickID)
+path = '/eos/experiment/sndlhc/users/falicant/RUN1/b121/flag0'
+# out_dir = '/afs/cern.ch/work/f/falicant/public/RUN1/b121'
+out_dir = path
 
 icell = options.cellID
 xbin=((icell // ncellsy)) + 1
@@ -34,15 +36,15 @@ ybin=((icell % ncellsy)) + 1
 # xbin=options.xcell
 # ybin=options.ycell
 
-with open(out_dir+"/vertices_of_interest.txt", "r") as file:
-    lines = file.readlines()[1:]
+# with open(out_dir+"/vertices_of_interest.txt", "r") as file:
+#     lines = file.readlines()[1:]
 
-voiid = []
+# voiid = []
 
-for line in lines:
-    values = line.split()
-    if int(values[1])!=xbin or int(values[2])!=ybin: continue
-    voiid.append(int(values[0]))
+# for line in lines:
+#     values = line.split()
+#     if int(values[0])!=xbin*10 or int(values[1])!=ybin*10: continue
+#     voiid.append(int(values[2]))
 
 #histo setup
 h_n = r.TH1D('n','Multiplicity;multiplicity', 30, 0, 30)
@@ -62,17 +64,14 @@ h_meanape = r.TH1D('meanape', 'Mean aperture;mean_ape', 100, 0, 1)
 h_meanphi = r.TH1D('meanphi', 'Mean phi;mean_phi', 160, -4, 4)
 h_maxdphi = r.TH1D('maxdphi', 'Max phi diff;max_dphi', 80, 0, 4)
 
+mom_est = ROOT.EdbMomentumEstimator()
+
 N=30
 start_time = time()
-cell_path1 = path+'/cell_{}_{}_1x1cm/b000021'.format(xbin*10, ybin*10)
-cell_path2 = path+'/cell_{}_{}_1x1cm_done/b000021'.format(xbin*10, ybin*10)
+vtx_file = path+'/cell_{}_{}/b000021/flag0.vtx.root'.format(xbin*10, ybin*10)
 #reading vertices
-if os.path.isfile(cell_path1+'/b000021.0.0.0.vtx.root'):
-    vtx_file = cell_path1+'/b000021.0.0.0.vtx.root'
-elif os.path.isfile(cell_path2+'/b000021.0.0.0.vtx.root'):
-    vtx_file = cell_path2+'/b000021.0.0.0.vtx.root'
-else:
-    print("Vertex file not found, ", cell_path1)
+if not os.path.isfile(vtx_file):
+    print("Vertex file not found, ", vtx_file)
     exit(1)
 
 #save vertices in root file
@@ -108,6 +107,8 @@ _tLastX = array('f', N*[0])
 _tLastY = array('f', N*[0])
 _tLastZ = array('f', N*[0])
 _tID = array('i', N*[0])
+_mom = array('f', [0])
+_mom_t = array('f', N*[0])
 
 outputTree.Branch("cellx", _cellx, "cellx/I")
 outputTree.Branch("celly", _celly, "celly/I")
@@ -138,6 +139,8 @@ outputTree.Branch("meanaperture", _meanaperture, "meanaperture/F")
 outputTree.Branch("dphi", _dphi, "dphi[ntrks]/F")
 outputTree.Branch("maxdphi", _maxdphi, "maxdphi/F")
 outputTree.Branch("meanphi", _meanphi, "meanphi/F")
+outputTree.Branch("mom", _mom, "mom/F")
+outputTree.Branch("mom_t", _mom_t, "mom_t[ntrks]/F")
 
 print("opening file: ",vtx_file)
 dproc = r.EdbDataProc()
@@ -160,6 +163,7 @@ vertices = gAli.eVTX
 
 vtx_of_interest = 0
 for vtx in vertices:
+    vtx_mom = 0
     vz = vtx.VZ()
     vx = vtx.VX()
     vy = vtx.VY()
@@ -176,6 +180,9 @@ for vtx in vertices:
     if flag != 0 and flag != 3: continue
     ntrks = vtx.N()
     h_n.Fill(ntrks)
+    # if vtx.ID() in voiid:
+    #     print(vtx.ID, ntrks)
+
     if ntrks < 3: continue
     h_n0.Fill(ntrks)
     nplList = []
@@ -225,7 +232,10 @@ for vtx in vertices:
         _tLastX[itrack] = sx
         _tLastY[itrack] = sy           
         _tLastZ[itrack] = sz           
-
+        track_mom = mom_est.PMScoordinate(track)
+        _mom_t[itrack] = track_mom
+        if track_mom > 0 and track_mom < 1e9:
+            vtx_mom += track_mom
         for jtrack in range(itrack+1, ntrks):
             t2 = vtx.GetTrack(jtrack)
             tx= track.TX() - t2.TX()
@@ -258,8 +268,8 @@ for vtx in vertices:
     _vy[0]=vy
     _vz[0]=vz
     _vID[0] = vtx.ID()
-    if vtx.ID() in voiid: _voi[0] = 1
-    else: _voi[0] = 0
+    # if vtx.ID() in voiid: _voi[0] = 1
+    # else: _voi[0] = 0
     _ntrks[0] = ntrks
     _nsegtot[0] = segidx
     _fillfact[0] = np.mean(ffList)
@@ -269,6 +279,7 @@ for vtx in vertices:
     _maxdphi[0] = np.max(dPhiList)
     _meanphi[0] = np.mean(phiList)
     _meanaperture[0] = np.mean(apeList)
+    _mom[0] = vtx_mom
     outputTree.Fill()
 
 del gAli

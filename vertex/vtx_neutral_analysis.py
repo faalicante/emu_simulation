@@ -87,6 +87,7 @@ from_plate = 60
 zmin = -77585.00
 
 emureader = ROOT.EmulsionDet()
+mom_est = ROOT.EdbMomentumEstimator()
 
 
 path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/neutrals/'+part[npart]+'/Ntuples'
@@ -125,7 +126,7 @@ h_nseg = ROOT.TH1D('nseg', 'Number of segments;nseg', 56, 4, 60)
 h_npl = ROOT.TH1D('npl', ' Number of crossing films;npl', 56, 4, 60)
 h_ff = ROOT.TH1D('ff', 'Fill Factor;FF', 55, 0, 1.1)
 h_ip = ROOT.TH1D('ip', 'Impact parameter;ip[um]', 100, 0, 20)
-h_meanff = ROOT.TH1D('meanff', 'Mean Fill Factor;FF', 22, 0, 1.05)
+h_meanff = ROOT.TH1D('meanff', 'Mean Fill Factor;FF', 55, 0, 1.1)
 h_meanip = ROOT.TH1D('meanip', 'Mean impact parameter;ip[um]', 100, 0, 20)
 h_prob = ROOT.TH1D('prob', 'Probability;prob', 55, 0, 1.1)
 h_maxape = ROOT.TH1D('maxape', 'Max aperture;max_ape', 100, 0, 1)
@@ -176,6 +177,8 @@ _motherdPhi = array('f', [0])
 _signal = array('i', [0])
 _weight = array('f', [0])
 _clEvt = array('i', [0])
+_mom = array('f', [0])
+_mom_t = array('f', N*[0])
 
 outputTree.Branch("brickID", _brickID, "brickID/I")
 outputTree.Branch("naprt", _npart, "npart/I")
@@ -207,7 +210,8 @@ outputTree.Branch("motherdPhi", _motherdPhi, "motherdPhi/F")
 outputTree.Branch("signal", _signal, "signal/I")
 outputTree.Branch("weight", _weight, "weight/F")
 outputTree.Branch("clEvt", _clEvt, "clEvt/I")
-
+outputTree.Branch("mom", _mom, "mom/F")
+outputTree.Branch("mom_t", _mom_t, "mom_t[ntrks]/F")
 
 print("opening file: ",vtx_file)
 dproc = ROOT.EdbDataProc()
@@ -233,6 +237,7 @@ fake_vtx=0
 ### VERTICES LOOP ###
 for ivtx, vtx in enumerate(vertices):
     ntrks = vtx.N()
+    vtx_mom = 0
     neu_vtx=0
     lep_found=0
     fake_tracks=0
@@ -321,6 +326,10 @@ for ivtx, vtx in enumerate(vertices):
         _tID[itrack] = trackID
         AddToDict(DictTrackEvt, trackEvt)
         DictTrackPdg[track.MCTrack()] = trackPDG
+        track_mom = mom_est.PMScoordinate(track)
+        _mom_t[itrack] = track_mom
+        if track_mom > 0 and track_mom < 1e9:
+            vtx_mom += track_mom
         for jtrack in range(itrack+1, ntrks):
             t2 = vtx.GetTrack(jtrack)
             tx= track.TX() - t2.TX()
@@ -384,6 +393,7 @@ for ivtx, vtx in enumerate(vertices):
     _meanaperture[0] = np.mean(apeList)
     _signal[0] = 0
     _weight[0] = w
+    _mom[0] = vtx_mom
     outputTree.Fill()
     
 del gAli
