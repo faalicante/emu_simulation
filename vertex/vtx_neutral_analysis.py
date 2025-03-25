@@ -79,9 +79,13 @@ part = ['K_10_50', 'K_50_100', 'K_100_200', 'neu_10_50', 'neu_50_100', 'neu_100_
 ##WEIGHT USED FOR DATA IN RUN1 BRICK21
 events_b21 = [181, 206, 203, 195, 189, 214]
 expected_b21 = [42.840602, 5.7650435, 2.4583636, 24.623528, 2.1840258, 0.40455220]
+events_b31 = [118, 93, 105, 110, 100, 99]
+expected_b31 = [27.929232, 2.6026653, 1.2715674, 13.890195, 1.1555692, 0.18715265]
 lumi = 9.512
+lumi_r2 = 20.03
 fid_area = 0.6917317708
-w = expected_b21[npart]*lumi*fid_area/events_b21[npart]
+fid_area2 = 0.2088758681
+w = expected_b21[npart]*lumi_r2*fid_area2/events_b31[npart]
 
 from_plate = 60
 zmin = -77585.00
