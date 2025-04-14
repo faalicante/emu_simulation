@@ -96,11 +96,7 @@ void fromsndsw2FEDRA(TString simfilename, TString geofilename, int part){
   TTreeReaderArray<EmulsionDetPoint> emulsionhits(reader,"EmulsionDetPoint");
 
   int nevents = reader.GetEntries();
-  cout<<"Start processing nevents: "<<nevents<<endl;  
-
-  //empty EdbSegP for micro-tracks;
-  // EdbSegP *s1 = new EdbSegP();    
-  // EdbSegP *s2 = new EdbSegP();   
+  cout<<"Start processing nevents: "<<nevents<<endl;   
 
   double charge,mass;
   Int_t Flag = 1;
@@ -153,10 +149,13 @@ void fromsndsw2FEDRA(TString simfilename, TString geofilename, int part){
         double globalang[3] = {emupoint.GetPx(),emupoint.GetPy(),emupoint.GetPz()};
         double localang[3] = {0,0,0};
 
-        emureader.GetLocalAngles(detID, globalang, localang);
         //angles in TX, TY format
-        tx = localang[0]/localang[2];
-        ty = localang[1]/localang[2];
+        // emureader.GetLocalAngles(detID, globalang, localang);
+        // tx = localang[0]/localang[2];
+        // ty = localang[1]/localang[2];
+        // Not converting angles
+        tx = emupoint.GetPx()/emupoint.GetPz();
+        ty = emupoint.GetPy()/emupoint.GetPz();  
       }
       else{ //global reference system as sndsw, but in FEDRA units
         xem = emupoint.GetX();
@@ -164,7 +163,7 @@ void fromsndsw2FEDRA(TString simfilename, TString geofilename, int part){
 
         xem = xem* 1E+4 + 473000;
         yem = yem* 1E+4 - 158000;         
-      
+        
         tx = emupoint.GetPx()/emupoint.GetPz();
         ty = emupoint.GetPy()/emupoint.GetPz();  
       }
