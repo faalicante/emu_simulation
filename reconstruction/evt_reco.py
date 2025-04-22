@@ -4,19 +4,15 @@ import re
 
 def edit_evt_rootrc(file, evID):
   track_line = 'fedra.readCPcut:'
-  vertex_line = 'emvertex.vtx.cutvtx:'
-  try:
-    with open(file, 'r') as f:
-      lines = f.readlines()
+  with open(file, 'r') as f:
+    lines = f.readlines()
 
-    with open(file, 'w') as f:
-      for line in lines:
-        if line.startswith(track_line):
-          f.write(f"{track_line} s.eMCEvt=={evID}\n")
-        elif line.startswith(vertex_line):
-          f.write(f"{vertex_line} s.eMCEvt=={evID}\n")
-        else:
-          f.write(line)
+  with open(file, 'w') as f:
+    for line in lines:
+      if line.startswith(track_line):
+        f.write(f"{track_line} s.eMCEvt=={evID}\n")
+      else:
+        f.write(line)
 
   except FileNotFoundError:
       print(f"File not found: {file}")
@@ -74,16 +70,11 @@ for i_event, event in enumerate(events):
   if nu_brick_int == None: continue
   brickfolder = 'b'+str(nu_brick_int).zfill(6)
   print(brickfolder)
-  # os.system(f'cd {brickfolder}')
-  os.chdir(brickfolder)
-  os.system('pwd')
   os.system('cp ../track.rootrc ./')
   os.system('cp ../vertex.rootrc ./')
   edit_evt_rootrc('track.rootrc', i_event)
-  edit_evt_rootrc('vertex.rootrc', i_event)
   os.system(f'emtra -set={nu_brick_int} -new -v=2')
   os.system(f'emvertex -set={nu_brick_int}.0.0.0 -v=2')
   os.system(f'mv {brickfolder}.0.0.0.trk.root {brickfolder}.0.0.{i_event+1}.trk.root')
   os.system(f'mv {brickfolder}.0.0.0.vtx.root {brickfolder}.0.0.{i_event+1}.vtx.root')
   os.chdir('../')
-
