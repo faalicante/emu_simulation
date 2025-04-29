@@ -95,8 +95,10 @@ ftrk_file_name = simPath+f'/b0000{brickid}/found_tracks.root'
 ftrk_file = ROOT.TFile.Open(ftrk_file_name)
 parents = ftrk_file.tracks
 
-DIS_vIDs = list()
-DISevts = list()
+outFile = ROOT.TFile.Open(simPath+f'/b0000{brickid}/false_parents.root','RECREATE')
+friendNtuple = ROOT.TNtuple("parents", "Tree of false parents","brick:vid:matched")
+friendNtuple.SetDirectory(outFile)
+
 foundDIS = 0
 for ivtx, vtx in enumerate(vertices):
     # print("Vertex n.", ivtx)
@@ -104,15 +106,21 @@ for ivtx, vtx in enumerate(vertices):
     vID = vtx.ID()
     ntrks = vtx.N()
     DictVtxEvt = {}
+    DictVtxMot = {}
     for itrack in range(ntrks):
         track = vtx.GetTrack(itrack)
         nseg = track.N()
         trackPDG, trackEvt, trackID, trackMother = getMajorityFeatures(track)
         AddToDict(DictVtxEvt, trackEvt)
+        AddToDict(DictVtxMot, trackMother)
     vtxEvt = max(DictVtxEvt, key=DictVtxEvt.get)
+    vtxMot = max(DictVtxMot, key=DictVtxMot.get)
+    if vtxMot!=0: print("MotherID!=0", vID, vtxMot)
     for ftrack in parents:
-        if not ftrack.chosen: continue
         if ftrack.vid == vID: 
+            if not ftrack.chosen: 
+                friendNtuple.Fill(brickid, vID, 1)
+                continue
             parentID = int(ftrack.tid)
             trackFound = True
             # print(f"Vtx {vID}, parent {parentID}")
@@ -124,10 +132,18 @@ for ivtx, vtx in enumerate(vertices):
         break
     if trackEvtp == vtxEvt:
         foundDIS += 1
+        friendNtuple.Fill(brickid, vID, 1)
     else: 
         print("FALSE PARENT!!!  TrackID:", parentID)
+        friendNtuple.Fill(brickid, vID, 0)
         parents.Scan("vid:tid:nseg:firstp:r2:dz",f"vid=={vID}&&tid=={parentID}&&chosen==1")
 
 print('Total vtx:', ivtx+1)
 print('Total tracks found:', parents.GetEntries("chosen==1"))
 print('Total true parents:', foundDIS)
+
+ftrk_file.Close()
+outFile.cd()
+friendNtuple.Write()
+outFile.Write()
+outFile.Close()
