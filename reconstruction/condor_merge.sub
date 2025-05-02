@@ -1,0 +1,21 @@
+executable = condor_merge.sh
+OUT_DIR = /eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc/numucc_muon1.3E5
+arguments = $(ClusterID) $(EVENT) $(CELL) $(XPOS) $(YPOS) $(OUT_DIR)
+output = output/merge.$(ClusterId).$(EVENT).out
+error = error/merge.$(ClusterId).$(EVENT).err
+log = log/merge.$(ClusterId).log
+
+transfer_plugins=/eos/experiment/sndlhc/plugins/xrdcp_plugin.py
+transfer_input_files=root://eospublic.cern.ch/$(OUT_DIR)/track.rootrc
+output_destination=root://eospublic.cern.ch/$(OUT_DIR)/b000021
+transfer_output_files=b000021.*.root
+should_transfer_files = if_needed
+
++JobFlavour = "workday"
+request_memory = 18GB
+notification = Never
+requirements = (OpSysAndVer =?= "AlmaLinux9")
+requirements = Machine =!= LastRemoteHost
+on_exit_remove          = (ExitBySignal == False) && ((ExitCode == 1) || (ExitCode == 0))
+max_retries             = 2
+queue EVENT, CELL, XPOS, YPOS from nu_evt_cells.dat

@@ -4,15 +4,18 @@ int neutrino_inbkg(int event, int cell){
   int brickID = 21;
   TString cutstring = Form("s.eMCEvt==%i", event);
   TCut *cut = new TCut(cutstring);
-  TString newpath = "/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc/numucc_muon1.3E5";
-  TString nupath = "/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc/numucc_eff9_smear1_evt+1";
-  TString mupath = Form("/eos/experiment/sndlhc/MonteCarlo/FEDRA/muon1.3E5/cell_reco/%i", cell);
+  // TString newpath = "/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc/numucc_muon1.3E5";
+  // TString nupath = "/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc/numucc_eff9_smear1_evt+1";
+  // TString mupath = Form("/eos/experiment/sndlhc/MonteCarlo/FEDRA/muon1.3E5/cell_reco/%i", cell);
+  TString newpath = "./new";
+  TString nupath = "./numu";
+  TString mupath = "./muon";
   
   for (int i = 1; i <= 60; i++) {
     EdbCouplesTree *ect = new EdbCouplesTree();
     EdbCouplesTree *ect_nu = new EdbCouplesTree();
     EdbCouplesTree *ect_mu = new EdbCouplesTree();
-    TString cpname = Form("/b%06i/p%03i/%i.%i.0.0.cp.root", brickID, i, brickID, i);
+    TString cpname = Form("/p%03i/%i.%i.0.0.cp.root", brickID, i, brickID, i);
     ect->InitCouplesTree("couples", newpath+cpname, "RECREATE");
     ect_nu->InitCouplesTree("couples", nupath+cpname, "READ");
     ect_mu->InitCouplesTree("couples", mupath+cpname, "READ");
