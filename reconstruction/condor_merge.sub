@@ -1,5 +1,6 @@
 executable = condor_merge.sh
 OUT_DIR = /eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc/numucc_muon1.3E5
+X = ($(EVENT) + 1)
 arguments = $(ClusterID) $(EVENT) $(CELL) $(XPOS) $(YPOS) $(OUT_DIR)
 output = output/merge.$(ClusterId).$(EVENT).out
 error = error/merge.$(ClusterId).$(EVENT).err
@@ -8,8 +9,9 @@ log = log/merge.$(ClusterId).log
 transfer_plugins=/eos/experiment/sndlhc/plugins/xrdcp_plugin.py
 transfer_input_files=root://eospublic.cern.ch/$(OUT_DIR)/track.rootrc
 output_destination=root://eospublic.cern.ch/$(OUT_DIR)/b000021
-transfer_output_files=b000021.*.root
-should_transfer_files = if_needed
+transfer_output_files=b000021.0.0.$INT(X).trk.root, b000021.0.0.$INT(X).vtx.root
+should_transfer_files = YES
+when_to_trasfer_output = 
 
 +JobFlavour = "workday"
 request_memory = 18GB

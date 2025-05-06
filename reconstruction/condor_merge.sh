@@ -25,28 +25,25 @@ cd $MAIN_DIR
 MY_DIR=$EVENT
 for PLATENUMBER in $(seq 1 60); do
     PLATEFOLDER="$(printf "p%0*d" 3 $PLATENUMBER)"
-    mkdir -p -v ./$MY_DIR/numu/$PLATEFOLDER
-    mkdir -p -v ./$MY_DIR/muon/$PLATEFOLDER
-    mkdir -p -v ./$MY_DIR/new/$PLATEFOLDER
+    mkdir -p ./$MY_DIR/numu/$PLATEFOLDER
+    mkdir -p ./$MY_DIR/muon/$PLATEFOLDER
+    mkdir -p ./$MY_DIR/b000021/$PLATEFOLDER
     ln -s $NU_DIR/b000021/$PLATEFOLDER/21.$PLATENUMBER.0.0.cp.root ./$MY_DIR/numu/$PLATEFOLDER
     ln -s $MU_DIR/b000021/$PLATEFOLDER/21.$PLATENUMBER.0.0.cp.root ./$MY_DIR/muon/$PLATEFOLDER
 done
 
 ln -s $OUT_DIR/neutrino_inbkg.C ./$MY_DIR
-mv $MAIN_DIR/track.rootrc ./$MY_DIR
-ln -s $OUT_DIR/vertex.rootrc ./$MY_DIR
+mv $MAIN_DIR/track.rootrc ./$MY_DIR/b000021
+ln -s $OUT_DIR/vertex.rootrc ./$MY_DIR/b000021
 
 cd $MY_DIR
 
 root -l -q neutrino_inbkg.C\($EVENT,$CELL\)
+cd b000021
 sed -i "s/XPOS/$xpos/;s/YPOS/$ypos/" track.rootrc
 makescanset -set=21.0.0.0 -from_plate=60 -to_plate=1 -suff=cp.root -dz=-1315 -v=2 -new
 emtra -set=21.0.0.0 -v=2 -new
 emvertex -set=21.0.0.0 -v=2
 
-for PLATENUMBER in $(seq 1 60); do
-    PLATEFOLDER="$(printf "p%0*d" 3 $PLATENUMBER)"
-    mv new/$PLATEFOLDER/21.$PLATENUMBER.0.0.cp.root $MAIN_DIR/21.$PLATENUMBER.0.$((EVENT+1)).cp.root
-done
-mv b000021.0.0.0.trk.root $MAIN_DIR/b000021.0.0.$((EVENT+1)).trk.root
-mv b000021.0.0.0.vtx.root $MAIN_DIR/b000021.0.0.$((EVENT+1)).vtx.root
+mv b000021.0.0.0.trk.root $MAIN_DIR/b000021.0.0.$(( EVENT + 1)).trk.root
+mv b000021.0.0.0.vtx.root $MAIN_DIR/b000021.0.0.$(( EVENT + 1)).vtx.root
