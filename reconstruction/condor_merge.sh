@@ -40,7 +40,7 @@ cd $MY_DIR
 
 root -l -q neutrino_inbkg.C\($EVENT,$CELL\)
 cd b000021
-sed -i "s/XPOS/$xpos/;s/YPOS/$ypos/" track.rootrc
+sed -i "s/XPOS/$XPOS/;s/YPOS/$YPOS/" track.rootrc
 makescanset -set=21.0.0.0 -from_plate=60 -to_plate=1 -suff=cp.root -dz=-1315 -v=2 -new
 emtra -set=21.0.0.0 -v=2 -new
 emvertex -set=21.0.0.0 -v=2
