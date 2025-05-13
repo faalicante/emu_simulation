@@ -175,13 +175,13 @@ for i_event, event in enumerate(sTree):
         szlist.append(seg.Z())
         if signal == 1 and mother == 0:
           draw = True
-      if draw:
-        print("found vertex")
-        sxArr = array('d', sxlist)
-        syArr = array('d', sylist)
-        szArr = array('d', szlist)
-        g4xl.append(ROOT.TGraph(len(sxlist), szArr, sxArr))
-        g4yl.append(ROOT.TGraph(len(sylist), szArr, syArr))
+    if draw:
+      print("found vertex")
+      sxArr = array('d', sxlist)
+      syArr = array('d', sylist)
+      szArr = array('d', szlist)
+      g4xl.append(ROOT.TGraph(len(sxlist), szArr, sxArr))
+      g4yl.append(ROOT.TGraph(len(sylist), szArr, syArr))
   found_vtx = len(g4xl)
 
   ## drawing graphs
@@ -195,9 +195,10 @@ for i_event, event in enumerate(sTree):
   g1x.SetMarkerStyle(20)
   g1x.SetMarkerColor(ROOT.kBlack)
   g1x.SetMarkerSize(1)
-  gxMax = g1x.GetYaxis().GetXmax() *1.2
-  gxMin = g1x.GetYaxis().GetXmin() *0.8
-  g1x.GetYaxis().SetLimits(gxMin, gxMax)
+  gxMax = g1x.GetYaxis().GetXmax()
+  gxMin = g1x.GetYaxis().GetXmin()
+  g1x.GetYaxis().SetRangeUser(gxMin, gxMax)
+  print(gxMin, gxMax)
   g1x.Draw("AP")
 
   c1.cd(3)
@@ -205,7 +206,9 @@ for i_event, event in enumerate(sTree):
   g1y.SetMarkerStyle(20)
   g1y.SetMarkerColor(ROOT.kBlack)
   g1y.SetMarkerSize(1)
-  g1y.GetYaxis().SetLimits(gxMin, gxMax)
+  gyMax = g1x.GetYaxis().GetXmax()
+  gyMin = g1x.GetYaxis().GetXmin()
+  g1y.GetYaxis().SetRangeUser(gyMin, gyMax)
   g1y.Draw("AP")
 
   g2x = ROOT.TMultiGraph()
@@ -216,7 +219,7 @@ for i_event, event in enumerate(sTree):
     gx.SetMarkerSize(1)
     g2x.Add(gx)
   c1.cd(2)
-  g2x.GetYaxis().SetLimits(gxMin, gxMax)
+  g2x.GetYaxis().SetRangeUser(gxMin, gxMax)
   g2x.Draw("AP")
   c2.cd(1)
   g2x.Draw("AP")
@@ -229,7 +232,7 @@ for i_event, event in enumerate(sTree):
     gy.SetMarkerSize(1)
     g2y.Add(gy)
   c1.cd(4)
-  g2y.GetYaxis().SetLimits(gxMin, gxMax)
+  g2y.GetYaxis().SetRangeUser(gyMin, gyMax)
   g2y.Draw("AP")
   c2.cd(3)
   g2y.Draw("AP")
@@ -239,7 +242,7 @@ for i_event, event in enumerate(sTree):
   g3x.SetMarkerStyle(20)
   g3x.SetMarkerColor(ROOT.kRed)
   g3x.SetMarkerSize(1)
-  g3x.GetYaxis().SetLimits(gxMin, gxMax)
+  g3x.GetYaxis().SetRangeUser(gxMin, gxMax)
   g3x.Draw("AP")
 
   c2.cd(4)
@@ -247,7 +250,7 @@ for i_event, event in enumerate(sTree):
   g3y.SetMarkerStyle(20)
   g3y.SetMarkerColor(ROOT.kRed)
   g3y.SetMarkerSize(1)
-  g3y.GetYaxis().SetLimits(gxMin, gxMax)
+  g3y.GetYaxis().SetRangeUser(gyMin, gyMax)
   g3y.Draw("AP")
 
   c1.Update()
@@ -276,7 +279,7 @@ for i_event, event in enumerate(sTree):
       gx.SetMarkerColor(colors[ig%len(colors)])
       gx.SetMarkerSize(1)
       g4x.Add(gx)
-    g4x.GetYaxis().SetLimits(gxMin, gxMax)
+    g4x.GetYaxis().SetRangeUser(gxMin, gxMax)
     g4x.Draw("AP")
   
     c3.cd(3)
@@ -287,7 +290,7 @@ for i_event, event in enumerate(sTree):
       gy.SetMarkerColor(colors[ig%len(colors)])
       gy.SetMarkerSize(1)
       g4y.Add(gy)
-    g4y.GetYaxis().SetLimits(gxMin, gxMax)
+    g4y.GetYaxis().SetRangeUser(gyMin, gyMax)
     g4y.Draw("AP")
     c3.Update()
     outFile.cd()
