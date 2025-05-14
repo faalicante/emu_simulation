@@ -27,7 +27,8 @@ to_evt = options.to_evt
 
 if options.numu:
   pathSim = '/eos/experiment/sndlhc/users/dancc/NUSIM/numu_inBrick21/1'
-  pathRec = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc/numucc_muon1.3E5/b000021'
+  # pathRec = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc/numucc_muon1.3E5/b000021'
+  pathRec = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc/numu_inBrick21/eff100_nosmear/b000021'
   pathOut = pathRec+'/eff_study'
 elif options.muDIS: ##metti i tuoi path
   pathSim = ''
@@ -76,8 +77,8 @@ for i_event, event in enumerate(sTree):
   vertexrec.eUseSegPar=False
   vertexrec.eQualityMode=0
 
-  trk_cut = 'nseg>2&&npl<50'
-  vtx_cut = 'flag==0&&vz>-77585&&vz<0'
+  trk_cut = 'npl<55'
+  vtx_cut = 'vz>-77585&&vz<0'
 
   trk_file = pathRec+f"/b000021.0.0.{i_event+1}.trk.root"
   vtx_file = pathRec+f"/b000021.0.0.{i_event+1}.vtx.root"
@@ -206,8 +207,8 @@ for i_event, event in enumerate(sTree):
   g1y.SetMarkerStyle(20)
   g1y.SetMarkerColor(ROOT.kBlack)
   g1y.SetMarkerSize(1)
-  gyMax = g1x.GetYaxis().GetXmax()
-  gyMin = g1x.GetYaxis().GetXmin()
+  gyMax = g1y.GetYaxis().GetXmax()
+  gyMin = g1y.GetYaxis().GetXmin()
   g1y.GetYaxis().SetRangeUser(gyMin, gyMax)
   g1y.Draw("AP")
 
