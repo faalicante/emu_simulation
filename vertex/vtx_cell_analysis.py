@@ -19,6 +19,8 @@ def right_index(sorted_list, target):
         return len(sorted_list) - 1
     return pos+1
 
+mom_est = ROOT.EdbMomentumEstimator()
+
 brick = options.brick
 ncells = 18
 mincell = 5000
@@ -32,9 +34,9 @@ ybin=((icell // ncells)) + 1
 xcenter = xbin * cellsize
 ycenter = ybin * cellsize
 
-path = '/eos/experiment/sndlhc/emulsionData/2022/emureco_Napoli/RUN2/b000331/cells'
-# path = '/eos/experiment/sndlhc/users/dancc/MuonDIS/2024/EmuActive_z_2.88_3.55m_Ioni_latelateFLUKA_smeared/RUN1B21_mirror/b000121/cells'
-out_dir = '/afs/cern.ch/work/f/falicant/public/RUN2/b331_edipoda'
+# path = '/eos/experiment/sndlhc/emulsionData/2022/emureco_Napoli/RUN2/b000331/cells'
+path = '/eos/experiment/sndlhc/users/dancc/MuonDIS/2024/EmuActive_z_2.88_3.55m_Ioni_latelateFLUKA_smeared/RUN1B21_mirror/b000121/cells'
+out_dir = '/afs/cern.ch/work/f/falicant/public/RUN1/b121_edipoda'
 
 
 # with open(out_dir+"/vertices_of_interest.txt", "r") as file:
@@ -47,7 +49,7 @@ out_dir = '/afs/cern.ch/work/f/falicant/public/RUN2/b331_edipoda'
 
 N=50
 start_time = time()
-cell_path = path+f'/cell_{xbin*10}_{ybin*10}_1x1cm/b{brick:06d}'
+cell_path = path+f'/cell_{xbin*10}_{ybin*10}/b{brick:06d}'
 vtx_file = cell_path+f'/b{brick:06d}.0.0.0.vtx.refit.root'
 #reading vertices
 if not os.path.isfile(vtx_file):
@@ -120,6 +122,11 @@ _tLastX = array('f', N*[0])
 _tLastY = array('f', N*[0])
 _tLastZ = array('f', N*[0])
 _tID = array('i', N*[0])
+_mom = array('f', [0])
+_mom_long = array('f', [0])
+_mom_max = array('f', [0])
+_mom_cat = array('f', [0])
+_mom_t = array('f', N*[0])
 
 outputTree.Branch("cell", _cell, "cell/I")
 outputTree.Branch("cellx", _cellx, "cellx/I")
@@ -152,9 +159,20 @@ outputTree.Branch("dphi", _dphi, "dphi[ntrks]/F")
 outputTree.Branch("maxdphi", _maxdphi, "maxdphi/F")
 outputTree.Branch("magdphi", _magdphi, "magdphi/F")
 outputTree.Branch("meanphi", _meanphi, "meanphi/F")
+outputTree.Branch("mom", _mom, "mom/F")
+outputTree.Branch("mom_long", _mom_long, "mom_long/F")
+outputTree.Branch("mom_max", _mom_max, "mom_max/F")
+outputTree.Branch("mom_cat", _mom_max, "mom_max/F")
+outputTree.Branch("mom_t", _mom_t, "mom_t[ntrks]/F")
 
 vtx_of_interest = 0
 for vtx in vertices:
+    vtx_mom = 0
+    mom_max = 0
+    seg_max = 0
+    valid_rec = 0
+    cat = 0
+
     vz = vtx.VZ()
     vx = vtx.VX()
     vy = vtx.VY()
@@ -207,12 +225,34 @@ for vtx in vertices:
         _nlast[itrack] = nlast
         _tLastX[itrack] = sx
         _tLastY[itrack] = sy           
-        _tLastZ[itrack] = sz           
+        _tLastZ[itrack] = sz  
+
+        if nseg < 6: track_mom = -6
+        else: track_mom = mom_est.PMScoordinate(track)
+        _mom_t[itrack] = track_mom
+        if track_mom > 0 and track_mom < 1e9:
+            valid_rec += 1
+            vtx_mom += track_mom 
+            if track_mom > mom_max:
+                mom_max = track_mom
+            if nseg > seg_max:
+                mom_long = track_mom
+
         for jtrack in range(itrack+1, ntrks):
             t2 = vtx.GetTrack(jtrack)
             tx= tx - t2.TX()
             ty= ty - t2.TY()
             apeList.append(ROOT.TMath.Sqrt( tx*tx+ty*ty ))
+
+    fract_valid = float(valid_rec)/float(ntrks)
+    if fract_valid <= 0.2:
+        cat = 1
+    elif fract_valid <= 0.5:
+        cat = 2  
+    elif fract_valid <= 0.8:
+        cat = 3
+    else:
+        cat = 4
 
     plate = min(plateList)
     _plate[0] = plate
@@ -250,6 +290,10 @@ for vtx in vertices:
     _magdphi[0] = magdphi
     _meanphi[0] = np.mean(phiList)
     _meanaperture[0] = np.mean(apeList)
+    _mom[0] = vtx_mom
+    _mom_long[0] = mom_max
+    _mom_max[0] = mom_long
+    _mom_cat[0] = cat
     outputTree.Fill()
 
 del gAli
