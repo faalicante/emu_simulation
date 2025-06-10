@@ -18,6 +18,18 @@ def AddToDict(dictionary, var):
     else:
         dictionary[var] = 1
 
+def getBKGweight(evID, fluka_tree):
+    cell = evID//1.4e5
+    #cbmsimID = evID%1.4e5
+    cell_entries_RUN1 = 135850
+    fluka_entries = fluka_tree.GetEntries()
+    original_evID = (cell*cell_entries_RUN1)%fluka_entries
+    rc = fluka_tree.GetEntry(int(original_evID))
+    return fluka_tree.w
+
+
+mom_est = ROOT.EdbMomentumEstimator()
+
 brickID = options.brickID
 cell = options.cell
 ncells = 21
@@ -32,6 +44,9 @@ from_plate = 60
 zmin = -77585.00
 zmax = 0
 
+fluka_path = '/eos/experiment/sndlhc/users/dancc/PassingMu/FLUKA_muonspretransport/LHC_-160urad_magfield_2022TCL6_muons_rock_2e8pr_z290.773916.root'
+fluka_file = ROOT.TFile(fluka_path)
+fluka_tree = fluka_file.nt
 path = f'/eos/experiment/sndlhc/MonteCarlo/FEDRA/muon1.3E5/cell_reco/{cell}'
 out_name = f'/vertex_muon_{cell}_{brickID}.root'
 out_dir = path
@@ -84,6 +99,12 @@ _tPDG = array('i', N*[0])
 _tEvt = array('i', N*[0])
 _tMot = array('i', N*[0])
 _signal = array('i', [0])
+_weight = array('f', [0])
+_mom = array('f', [0])
+_mom_long = array('f', [0])
+_mom_max = array('f', [0])
+_mom_cat = array('f', [0])
+_mom_t = array('f', N*[0])
 
 outputTree.Branch("brickID", _brickID, "brickID/I")
 outputTree.Branch("cell", _cell, "cell/I")
@@ -121,6 +142,12 @@ outputTree.Branch("nlast", _nlast, "nlast[ntrks]/I")
 outputTree.Branch("tLastX", _tLastX, "tLastX[ntrks]/F")
 outputTree.Branch("tLastY", _tLastY, "tLastY[ntrks]/F")
 outputTree.Branch("tLastZ", _tLastZ, "tLastZ[ntrks]/F")
+outputTree.Branch("weight", _weight, "weight/F")
+outputTree.Branch("mom", _mom, "mom/F")
+outputTree.Branch("mom_long", _mom_long, "mom_long/F")
+outputTree.Branch("mom_max", _mom_max, "mom_max/F")
+outputTree.Branch("mom_cat", _mom_cat, "mom_cat/F")
+outputTree.Branch("mom_t", _mom_t, "mom_t[ntrks]/F")
 
 print("opening file: ",vtx_file)
 dproc = ROOT.EdbDataProc()
@@ -146,6 +173,14 @@ vertices = gAli.eVTX
 
 ### VERTICES LOOP ###
 for ivtx, vtx in enumerate(vertices):
+    DictVtxEvt = {}
+    vtx_mom = 0
+    mom_max = 0
+    mom_long = 0
+    seg_max = 0
+    valid_rec = 0
+    cat = 0
+
     vx = vtx.VX()
     vy = vtx.VY()
     vz = vtx.VZ()
@@ -179,6 +214,7 @@ for ivtx, vtx in enumerate(vertices):
             sMother = seg.Aid(0)
             AddToDict(DictSegPDG, sPDG)
             AddToDict(DictSegEvt, sEvt)
+            AddToDict(DictVtxEvt, sEvt)
             AddToDict(DictSegID, sID)
             AddToDict(DictSegMother, sMother)
         trackPDG = max(DictSegPDG, key=DictSegPDG.get)
@@ -222,11 +258,34 @@ for ivtx, vtx in enumerate(vertices):
         _tLastX[itrack] = sx
         _tLastY[itrack] = sy           
         _tLastZ[itrack] = sz    
+
+        if nseg < 6: track_mom = -6
+        else: track_mom = mom_est.PMScoordinate(track)
+        _mom_t[itrack] = track_mom
+        if track_mom > 0 and track_mom < 1e9:
+            valid_rec += 1
+            vtx_mom += track_mom 
+            if track_mom > mom_max:
+                mom_max = track_mom
+            if nseg > seg_max:
+                mom_long = track_mom
+                seg_max = nseg
+
         for jtrack in range(itrack+1, ntrks):
             t2 = vtx.GetTrack(jtrack)
             tx= tx - t2.TX()
             ty= ty - t2.TY()
             apeList.append(ROOT.TMath.Sqrt( tx*tx+ty*ty ))
+
+    fract_valid = float(valid_rec)/float(ntrks)
+    if fract_valid <= 0.2:
+        cat = 1
+    elif fract_valid <= 0.5:
+        cat = 2  
+    elif fract_valid <= 0.8:
+        cat = 3
+    else:
+        cat = 4
 
     plate = min(plateList)
     _plate[0] = plate
@@ -245,6 +304,10 @@ for ivtx, vtx in enumerate(vertices):
         dPhiList.append(difference)
         _dphi[itrack]=difference
     magdphi = ROOT.TMath.Sqrt(np.sum(arrTX)**2 + np.sum(arrTY)**2)
+
+    vtxEvt = max(DictVtxEvt, key=DictVtxEvt.get)
+    w = getBKGweight(vtxEvt, fluka_tree)
+    _weight[0] = w
 
     _brickID[0] = brickID
     _cell[0] = cell
@@ -265,6 +328,10 @@ for ivtx, vtx in enumerate(vertices):
     _meanphi[0] = np.mean(phiList)
     _meanaperture[0] = np.mean(apeList)
     _signal[0] = 0
+    _mom[0] = vtx_mom
+    _mom_long[0] = mom_long
+    _mom_max[0] = mom_max
+    _mom_cat[0] = cat
     outputTree.Fill()
     
 del gAli
