@@ -91,6 +91,7 @@ vertices = gAli.eVTX
 outputFile = ROOT.TFile(out_dir+"/vertex_selection_{}_{}.root".format(xbin*10, ybin*10),"RECREATE")	
 outputTree = ROOT.TTree("vtx","Tree of vertices")
 
+_brick = array('i', [0])
 _cell = array('i', [0])
 _cellx = array('i', [0])
 _celly = array('i', [0])
@@ -128,6 +129,7 @@ _mom_max = array('f', [0])
 _mom_cat = array('f', [0])
 _mom_t = array('f', N*[0])
 
+outputTree.Branch("brick", _brick, "brick/I")
 outputTree.Branch("cell", _cell, "cell/I")
 outputTree.Branch("cellx", _cellx, "cellx/I")
 outputTree.Branch("celly", _celly, "celly/I")
@@ -162,13 +164,14 @@ outputTree.Branch("meanphi", _meanphi, "meanphi/F")
 outputTree.Branch("mom", _mom, "mom/F")
 outputTree.Branch("mom_long", _mom_long, "mom_long/F")
 outputTree.Branch("mom_max", _mom_max, "mom_max/F")
-outputTree.Branch("mom_cat", _mom_max, "mom_max/F")
+outputTree.Branch("mom_cat", _mom_cat, "mom_cat/F")
 outputTree.Branch("mom_t", _mom_t, "mom_t[ntrks]/F")
 
 vtx_of_interest = 0
 for vtx in vertices:
     vtx_mom = 0
     mom_max = 0
+    mom_long = 0
     seg_max = 0
     valid_rec = 0
     cat = 0
@@ -237,6 +240,7 @@ for vtx in vertices:
                 mom_max = track_mom
             if nseg > seg_max:
                 mom_long = track_mom
+                seg_max = nseg
 
         for jtrack in range(itrack+1, ntrks):
             t2 = vtx.GetTrack(jtrack)
@@ -272,6 +276,7 @@ for vtx in vertices:
         _dphi[itrack]=difference
     magdphi = ROOT.TMath.Sqrt(np.sum(arrTX)**2 + np.sum(arrTY)**2)
 
+    _brick[0] = brick
     _cell[0] = icell
     _cellx[0] = xbin
     _celly[0] = ybin
@@ -291,8 +296,8 @@ for vtx in vertices:
     _meanphi[0] = np.mean(phiList)
     _meanaperture[0] = np.mean(apeList)
     _mom[0] = vtx_mom
-    _mom_long[0] = mom_max
-    _mom_max[0] = mom_long
+    _mom_long[0] = mom_long
+    _mom_max[0] = mom_max
     _mom_cat[0] = cat
     outputTree.Fill()
 

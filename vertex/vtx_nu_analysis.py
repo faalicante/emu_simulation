@@ -35,7 +35,7 @@ if numu:
     sim_path = '/eos/experiment/sndlhc/users/dancc/NUSIM/numu_inBrick21'
     out_name = f'/vertex_numu_{brickID}_{partition}.root'
 elif nue:
-    path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/nuecc/nuecc_eff9_smear1'
+    path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/nuecc/nuecc_muon1.3E5'
     sim_path = '/eos/experiment/sndlhc/users/dancc/NUSIM/nue_inBrick21'
     out_name = f'/vertex_nue_{brickID}_{partition}.root'
 
