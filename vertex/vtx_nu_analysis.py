@@ -14,6 +14,8 @@ parser.add_argument("--nue", dest="nue", required=False, default=None)
 parser.add_argument("-p", dest="partition", required=False, default=None, type=int)
 options = parser.parse_args()
 
+mom_est = ROOT.EdbMomentumEstimator()
+
 numu = options.numu
 nue = options.nue
 brickID = options.brickID
@@ -30,16 +32,24 @@ def AddToDict(dictionary, var):
 
 if numu:
     path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc/numucc_muon1.3E5'
-    sim_file = path+'/inECC_sndLHC.Genie-TGeant4.root'
+    sim_path = '/eos/experiment/sndlhc/users/dancc/NUSIM/numu_inBrick21'
     out_name = f'/vertex_numu_{brickID}_{partition}.root'
 elif nue:
     path = '/eos/experiment/sndlhc/MonteCarlo/FEDRA/nuecc/nuecc_eff9_smear1'
-    sim_file = path+'/inECC_sndLHC.Genie-TGeant4.root'
+    sim_path = '/eos/experiment/sndlhc/users/dancc/NUSIM/nue_inBrick21'
     out_name = f'/vertex_nue_{brickID}_{partition}.root'
 
 # geoFile =  path + '/geofile_full.Genie-TGeant4.root'
 # import SndlhcGeo
 # geo = SndlhcGeo.GeoInterface(geoFile)
+
+sTree = ROOT.TChain("cbmsim")
+for i in range(partition*10, (partition+1)*10):
+    sTree.Add(sim_path+f'/{i+1}/sndLHC.Genie-TGeant4.root')
+
+h_en = ROOT.TH1F("h_en", "Energy distribution of neutrinos", 100, 0, 5000)
+for entry in sTree:
+    h_en.Fill(entry.MCTrack[0].GetEnergy())
 
 out_dir = path+'/vtx_analysis'
 outputFile = ROOT.TFile(out_dir+out_name,"RECREATE")	
@@ -75,7 +85,7 @@ vertexrec.eUseSegPar=False
 vertexrec.eQualityMode=0
 
 vertextot = ROOT.EdbPVRec()
-vtx_cut = f'n>2&&(flag==0||flag==3)&&vz>{zmin}&&vz<{zmax}'
+vtx_cut = f'n>2&&flag==0&&vz>{zmin}&&vz<{zmax}'
 
 rec_vtx = 0
 nu_vtx = 0
@@ -138,7 +148,11 @@ _tEvt = array('i', N*[0])
 _tMot = array('i', N*[0])
 _signal = array('i', [0])
 _mom = array('f', [0])
+_mom_long = array('f', [0])
+_mom_max = array('f', [0])
+_mom_cat = array('f', [0])
 _mom_t = array('f', N*[0])
+_energy = array('f', [0])
 
 outputTree.Branch("brickID", _brickID, "brickID/I")
 outputTree.Branch("vID", _vID, "vID/I")
@@ -165,8 +179,6 @@ outputTree.Branch("meanaperture", _meanaperture, "meanaperture/F")
 outputTree.Branch("maxdphi", _maxdphi, "maxdphi/F")
 outputTree.Branch("meanphi", _meanphi, "meanphi/F")
 outputTree.Branch("signal", _signal, "signal/I")
-outputTree.Branch("mom", _mom, "mom/F")
-outputTree.Branch("mom_t", _mom_t, "mom_t[ntrks]/F")
 outputTree.Branch("magdphi", _magdphi, "magdphi/F")
 outputTree.Branch("dphi", _dphi, "dphi[ntrks]/F")
 outputTree.Branch("plate", _plate, "plate/I")
@@ -175,6 +187,12 @@ outputTree.Branch("nlast", _nlast, "nlast[ntrks]/I")
 outputTree.Branch("tLastX", _tLastX, "tLastX[ntrks]/F")
 outputTree.Branch("tLastY", _tLastY, "tLastY[ntrks]/F")
 outputTree.Branch("tLastZ", _tLastZ, "tLastZ[ntrks]/F")
+outputTree.Branch("mom", _mom, "mom/F")
+outputTree.Branch("mom_long", _mom_long, "mom_long/F")
+outputTree.Branch("mom_max", _mom_max, "mom_max/F")
+outputTree.Branch("mom_cat", _mom_cat, "mom_cat/F")
+outputTree.Branch("mom_t", _mom_t, "mom_t[ntrks]/F")
+outputTree.Branch("energy", _energy, "energy/F")
 
 
 # fsim = ROOT.TFile.Open(sim_file)
@@ -185,7 +203,14 @@ vertices = vertextot.eVTX
 ##START ANALYSIS
 ### VERTICES LOOP ###
 for ivtx, vtx in enumerate(vertices):
+    DictVtxEvt = {}
     vtx_mom = 0
+    mom_max = 0
+    mom_long = 0
+    seg_max = 0
+    valid_rec = 0
+    cat = 0
+
     ntrks = vtx.N()
     vx = vtx.VX()
     vy = vtx.VY()
@@ -224,6 +249,7 @@ for ivtx, vtx in enumerate(vertices):
             sID = seg.MCTrack()
             sMother = seg.Aid(0)
             AddToDict(DictSegPDG, sPDG)
+            AddToDict(DictVtxEvt, sEvt)
             AddToDict(DictSegEvt, sEvt)
             AddToDict(DictSegID, sID)
             AddToDict(DictSegMother, sMother)
@@ -267,16 +293,35 @@ for ivtx, vtx in enumerate(vertices):
         _nlast[itrack] = nlast
         _tLastX[itrack] = sx
         _tLastY[itrack] = sy           
-        _tLastZ[itrack] = sz   
-        track_mom = mom_est.PMScoordinate(track)
+        _tLastZ[itrack] = sz
+
+        if nseg < 6: track_mom = -6
+        else: track_mom = mom_est.PMScoordinate(track)
         _mom_t[itrack] = track_mom
         if track_mom > 0 and track_mom < 1e9:
-            vtx_mom += track_mom
+            valid_rec += 1
+            vtx_mom += track_mom 
+            if track_mom > mom_max:
+                mom_max = track_mom
+            if nseg > seg_max:
+                mom_long = track_mom
+                seg_max = nseg
+
         for jtrack in range(itrack+1, ntrks):
             t2 = vtx.GetTrack(jtrack)
             tx= track.TX() - t2.TX()
             ty= track.TY() - t2.TY()
             apeList.append(ROOT.TMath.Sqrt( tx*tx+ty*ty ))
+
+    fract_valid = float(valid_rec)/float(ntrks)
+    if fract_valid <= 0.2:
+        cat = 1
+    elif fract_valid <= 0.5:
+        cat = 2  
+    elif fract_valid <= 0.8:
+        cat = 3
+    else:
+        cat = 4
 
     plate = min(plateList)
     _plate[0] = plate
@@ -296,6 +341,10 @@ for ivtx, vtx in enumerate(vertices):
         _dphi[itrack]=difference
     magdphi = ROOT.TMath.Sqrt(np.sum(arrTX)**2 + np.sum(arrTY)**2)
 
+    vtxEvt = max(DictVtxEvt, key=DictVtxEvt.get)
+    sTree.GetEntry(vtxEvt)
+    _energy[0] = sTree.MCTrack[0].GetEnergy()
+
     _brickID[0] = brickID
     _vx[0]=vx
     _vy[0]=vy
@@ -313,6 +362,9 @@ for ivtx, vtx in enumerate(vertices):
     _meanaperture[0] = np.mean(apeList)
     _signal[0] = 1
     _mom[0] = vtx_mom
+    _mom_long[0] = mom_long
+    _mom_max[0] = mom_max
+    _mom_cat[0] = cat
     outputTree.Fill()
     
 del gAli
@@ -320,6 +372,7 @@ del gAli
 #write output files
 outputFile.cd()
 outputTree.Write()
+h_en.Write()
 outputFile.Close()
 
 print(f'Reco vtx: {rec_vtx}')
