@@ -18,6 +18,8 @@ export XROOTD_VMP=eospublic.cern.ch:/eos=/eos
 MAIN_DIR=$PWD
 cd $MAIN_DIR
 MY_DIR=$EVENT
+
+mkdir -p ./$MY_DIR/b000021
 ln -s $OUT_DIR/b000021/b000021.0.0.0.set.root ./$MY_DIR/b000021/
 ln -s $OUT_DIR/b000021/b000021.0.0.$(( EVENT + 1)).trk.root ./$MY_DIR/b000021/b000021.0.0.0.trk.root
 ln -s $OUT_DIR/vertex.rootrc ./$MY_DIR/b000021
