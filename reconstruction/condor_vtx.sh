@@ -34,7 +34,7 @@ emvertex -set=21.0.0.0 -v=1 -r
 cp b000021.0.0.0.vtx.root $MAIN_DIR/b000021.0.0.$(( EVENT + 1)).vtx.root
 cp b000021.0.0.0.vtx.discimp.root $MAIN_DIR/b000021.0.0.$(( EVENT + 1)).vtx.discimp.root
 
-ln -s b000021.0.0.0.vtx.discimp.root b000021.0.0.0.vtx.root
+ln -s -f b000021.0.0.0.vtx.discimp.root b000021.0.0.0.vtx.root
 cp vertex_edi.rootrc vertex.rootrc
 emvertex -set=21.0.0.0 -v=1 -r -fit
 
