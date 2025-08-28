@@ -33,7 +33,7 @@ for PLATENUMBER in $(seq 1 60); do
 done
 
 ln -s $OUT_DIR/neutrino_inbkg.C ./$MY_DIR
-mv $MAIN_DIR/track.rootrc ./$MY_DIR/b000021
+cp $MAIN_DIR/track.rootrc ./$MY_DIR/b000021
 ln -s $OUT_DIR/vertex.rootrc ./$MY_DIR/b000021
 
 cd $MY_DIR
@@ -45,5 +45,5 @@ makescanset -set=21.0.0.0 -from_plate=60 -to_plate=1 -suff=cp.root -dz=-1315 -v=
 emtra -set=21.0.0.0 -v=2 -new
 emvertex -set=21.0.0.0 -v=2
 
-mv b000021.0.0.0.trk.root $MAIN_DIR/b000021.0.0.$(( EVENT + 1)).trk.root
-mv b000021.0.0.0.vtx.root $MAIN_DIR/b000021.0.0.$(( EVENT + 1)).vtx.root
+cp b000021.0.0.0.trk.root $MAIN_DIR/b000021.0.0.$(( EVENT + 1)).trk.root
+cp b000021.0.0.0.vtx.root $MAIN_DIR/b000021.0.0.$(( EVENT + 1)).vtx.root
