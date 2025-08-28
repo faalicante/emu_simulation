@@ -2,16 +2,16 @@ executable = condor_vtx.sh
 OUT_DIR = /eos/experiment/sndlhc/MonteCarlo/FEDRA/numucc/numucc_muon1.3E5
 X = ($(EVENT) + 1)
 arguments = $(ClusterID) $(EVENT) $(OUT_DIR)
-output = output/merge.$(ClusterId).$(EVENT).out
-error = error/merge.$(ClusterId).$(EVENT).err
-log = log/merge.$(ClusterId).log
+output = output/vtx.$(ClusterId).$(EVENT).out
+error = error/vtx.$(ClusterId).$(EVENT).err
+log = log/vtx.$(ClusterId).log
 
 transfer_plugins=/eos/experiment/sndlhc/plugins/xrdcp_plugin.py
 output_destination=root://eospublic.cern.ch/$(OUT_DIR)/b000021
-transfer_output_files= b000021.0.0.$INT(X).vtx.root
+transfer_output_files= b000021.0.0.$INT(X).vtx.root, b000021.0.0.$INT(X).vtx.discimp.root, b000021.0.0.$INT(X).vtx.refit.root
 should_transfer_files = YES
 
-+JobFlavour = "espresso"
++JobFlavour = "longlunch"
 request_memory = 3GB
 notification = Never
 requirements = (OpSysAndVer =?= "AlmaLinux9")
